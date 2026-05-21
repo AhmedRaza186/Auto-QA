@@ -3,9 +3,9 @@ import React from 'react';
 
 export default function Home() {
   return (
-   <div>
-    <UserButton/> 
-   </div>
+    <div>
+      <UserButton />
+    </div>
   );
 }
 
@@ -18,8 +18,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     backgroundColor: '#09090b',
     color: '#fafafa',
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif",
-    padding: '2rem',
+    fontFamily: "'Poppins',sans-serif",
+    padding: '1rem',
     boxSizing: 'border-box',
   },
   hero: {
