@@ -7,22 +7,23 @@ import { Card, CardContent } from '../ui/card'
 import EmptyWorkspace from './EmptyWorkspace'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
+import RepoDialog from './RepoDialog'
 
 const WorkspaceMain = () => {
 
     const { userDetails } = useContext(UserContext)
     const router = useRouter()
-    const [token,setToken] = useState('')
-    useEffect(()=>{
+    const [token, setToken] = useState('')
+    useEffect(() => {
         getGithubUserToken()
     })
-const getGithubUserToken = async ()=>{
-     const res = await axios.get('/api/github/token')
-     console.log(res.data.token);
-     setToken(res.data.token)
-     
-}
-    const addRepo =  () =>{
+    const getGithubUserToken = async () => {
+        const res = await axios.get('/api/github/token')
+        console.log(res.data.token);
+        setToken(res.data.token)
+
+    }
+    const addRepo = () => {
         router.push('api/github')
     }
     return (
@@ -38,15 +39,15 @@ const getGithubUserToken = async ()=>{
                 </div>
                 <div>
                     {
-                        !token?<Button className='bg-blue-700 text-white' onClick={addRepo}>Setup</Button>:
-                        <Button className='bg-blue-700 text-white' onClick={addRepo}>Connect</Button>
-                    }
+                        !token ? <Button className='bg-blue-700 text-white' onClick={addRepo}>Setup</Button> :
+                            <RepoDialog setRefreshPage={(refresh: boolean) => console.log(refresh)
+                            } />}
                 </div>
             </Card>
 
             <Card className='mt-10 border rounded-lg border-gray-200'>
                 <CardContent>
-                  <EmptyWorkspace />  
+                    <EmptyWorkspace />
                 </CardContent>
             </Card>
         </div>
