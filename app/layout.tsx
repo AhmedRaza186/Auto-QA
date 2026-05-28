@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import Provider from './provider';
 
 export const metadata: Metadata = {
-  title: "AI QA automation agen",
-  description: "Created using the ultimate interactive Next.js stack generator CLI.",
+  title: "Auto-QA",
+  description: "AI-powered test automation for GitHub repos.",
 };
 
 export default function RootLayout({

@@ -16,7 +16,7 @@ import { Card } from '../ui/card'
 import { Input } from '../ui/input'
 import { UserContext } from '@/context/userContext'
 
-type Repo = {
+export type Repo = {
   id: number;
   name: string;
   full_name:string;
@@ -28,7 +28,9 @@ type Repo = {
   owner: string;
 }
 
-const RepoDialog = ({ setRefreshPage }: { setRefreshPage: (refresh: boolean) => void }) => {
+import { UserRepo } from './UserRepoList'
+
+const RepoDialog = ({ setRefreshPage, userRepoList }: { setRefreshPage: (refresh: boolean) => void, userRepoList: UserRepo[] }) => {
 
   const [repoList, setRepoList] = useState<Repo[]>([])
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null)
@@ -96,16 +98,18 @@ const RepoDialog = ({ setRefreshPage }: { setRefreshPage: (refresh: boolean) => 
             <Input className='border-none bg-gray-50 focus:outline-none focus:border-gray-400' placeholder="Search" onChange={(e) => setUserSearch(e.target.value)} />
           </div>
           <ul className='overflow-y-auto h-60'>
-            {filterRepos.map(repo => (
+            {filterRepos.map(repo => {
+              const isAdded = userRepoList.some(userRepo => userRepo.repoId === repo.id);
+              return (
 
               <Card className={`p-4 my-2 border rounded-lg border-gray-200 hover:border-blue-400 cursor-pointer ${selectedRepo?.id === repo.id ? 'bg-gray-200' : null}`} key={repo.id} onClick={() => setSelectedRepo(repo)}>
 
                 <div className='flex items-center justify-between'>
                   <h2 className='text-lg font-medium'>{repo.name}</h2>
-                  <Button className='bg-blue-700 text-white' onClick={() => saveRepo(repo)}>Add</Button>
+                  <Button disabled={isAdded} className='bg-blue-700 text-white' onClick={() => !isAdded && saveRepo(repo)}>{isAdded ? 'Added' : 'Add'}</Button>
                 </div>
               </Card>
-            ))}
+            )})}
           </ul>
         </div>
         <DialogFooter className='flex gap-5'>
