@@ -14,11 +14,13 @@ import {
     XCircle,
     ListChecks,
     Loader2,
-    Loader2Icon
+    Loader2Icon,
+    Link2Icon
 } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '@/context/userContext'
 import TestCasesList from './TestCasesList'
+import RepoSettings from './RepoSettings'
 
 export interface UserRepo {
     id: number
@@ -32,10 +34,13 @@ export interface UserRepo {
     owner: string
     default_branch: string
     language: string | null
+    targetDomain?: string;
+    gloablInstruction?: string;
 }
 
 interface Props {
     repoList: UserRepo[]
+    setReload : () => void
 }
 
 export type TestCase = {
@@ -60,7 +65,7 @@ type StatusData = {
     passRate: number;
 }
 
-const UserRepoList = ({ repoList }: Props) => {
+const UserRepoList = ({ repoList , setReload }: Props) => {
     // Add missing status variables
     const totalTests = 0
     const passedTests = 0
@@ -71,8 +76,8 @@ const UserRepoList = ({ repoList }: Props) => {
     const [loading, setLoading] = useState(false)
     const [testCaseloading, setTestCaseloading] = useState(false)
     const [testCases, setTestCases] = useState<TestCase[]>([])
-    const [statusData,setStatusData] = useState<StatusData>({totalTests:0,passedTests:0,failedTests:0,passRate:0})
-    
+    const [statusData, setStatusData] = useState<StatusData>({ totalTests: 0, passedTests: 0, failedTests: 0, passRate: 0 })
+
 
     const handleGenerateTestCases = async (repo: UserRepo) => {
         try {
@@ -103,16 +108,16 @@ const UserRepoList = ({ repoList }: Props) => {
             const res = await axios.get(`/api/test-cases?repoId=${repoId}`)
 
             console.log(res.data, 'res.data')
-             const userTestCases = res.data as TestCase[];
+            const userTestCases = res.data as TestCase[];
             const passedTests = userTestCases?.filter(testCase => testCase.status == 'passed').length || 0;
-        const failedTests = userTestCases?.filter(testCase => testCase.status == 'failed').length || 0;
-        const passRate = userTestCases?.length ? Math.round((passedTests / userTestCases.length) * 100) : 0;
+            const failedTests = userTestCases?.filter(testCase => testCase.status == 'failed').length || 0;
+            const passRate = userTestCases?.length ? Math.round((passedTests / userTestCases.length) * 100) : 0;
 
             setStatusData({
-             totalTests: res.data.length,
-            passedTests: passedTests,
-            failedTests: failedTests,
-            passRate: passRate
+                totalTests: res.data.length,
+                passedTests: passedTests,
+                failedTests: failedTests,
+                passRate: passRate
             })
             setTestCases(res.data)
         } catch (error) {
@@ -162,6 +167,15 @@ const UserRepoList = ({ repoList }: Props) => {
 
                         <AccordionContent>
                             <div className='pt-4 space-y-5'>
+
+                                <div className='bg-gray-50 p-3 border rounded-xl flex justify-between items-center'>
+                                    <div className='flex gap-3 items-center'>
+                                        <Link2Icon className='text-primary' />
+                                        <h2>Target Domain:</h2>
+                                        <h2 className='bg-white p-1 px-2 border rounded-md text-primary font-medium'>{repo?.targetDomain}</h2>
+                                    </div>
+                                    <RepoSettings repo={repo}  setReload={setReload} />
+                                </div>
                                 <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
                                     <StatusCard
                                         title="Total Tests"

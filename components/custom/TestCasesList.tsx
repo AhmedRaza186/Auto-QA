@@ -5,6 +5,7 @@ import { Checkbox } from '../ui/checkbox'
 import { Badge } from '../ui/badge'
 import { Play, RefreshCw, Settings, SettingsIcon } from 'lucide-react'
 import { Button } from '../ui/button'
+import TestCaseSettingDialog from './TestCaseSettingDialog'
 // import TestCaseSettingDialog from './TestCaseSettingDialog'
 // import TestExecutionModal from './TestCaseExecutionModel'
 
@@ -50,9 +51,7 @@ return(
                 <div className='flex gap-5 '>
                     <Badge variant={'secondary'}>{testCase?.type}</Badge>
                     <Badge variant={'secondary'}>Pending</Badge>
-                    <Button size={'icon'}>
-                        <SettingsIcon className='w-4 h-4 hover:rotate-90 transition-transform'/>
-                    </Button>
+                  <TestCaseSettingDialog testCase={testCase} setReload={onReload}/>
                 </div>
             </div>
         ))}

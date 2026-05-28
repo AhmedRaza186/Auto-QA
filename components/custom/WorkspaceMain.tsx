@@ -69,7 +69,7 @@ const WorkspaceMain = () => {
                     </Card>
                 )
                 : (
-                    <UserRepoList repoList={userRepoList} />
+                    <UserRepoList repoList={userRepoList} setReload={() => getAddedRepos()} />
                     
                 )
             }

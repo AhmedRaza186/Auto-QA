@@ -1,96 +1,90 @@
-"use client"
+
 import React, { useState } from 'react'
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from "@/components/ui/dialog"
-import { Button } from '@/components/ui/button'
-import { Settings } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import axios from 'axios'
+import { Button } from '../ui/button'
+import { Settings2 } from 'lucide-react'
+import { Input } from '../ui/input'
+import { Textarea } from '../ui/textarea'
 import { UserRepo } from './UserRepoList'
+import axios from 'axios'
 
-interface Props {
-  repo: UserRepo;
-  setReload: () => void;
+type props = {
+    repo: UserRepo,
+    setReload: () => void;
 }
 
-const RepoSettings = ({ repo, setReload }: Props) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  // State for project configuration fields
-  const [repoSettings, setRepoSettings] = useState({
-    targetDomain: repo.targetDomain || 'http://localhost:3000',
-    globalInstruction: repo.globalInstruction || ''
-  });
+const RepoSettings = ({ repo,setReload  }: props) => {
 
-  // Updates database with new project settings
-  const handleSaveSetting = async () => {
-    setLoading(true);
-    try {
-      await axios.post('/api/user-repo/setting', {
-        repoId: repo.repoId,
-        ...repoSettings
-      });
-      setReload(); // Triggers a UI refresh
-      setIsOpen(false); // Closes dialog on success
-    } catch (error) {
-      console.error("Error saving settings:", error);
-    } finally {
-      setLoading(false);
+      const [isOpen, setIsOpen] = useState(false);
+    const [repoSettings, setRepoSettings] = useState({
+        targetDomain: repo?.targetDomain || '',
+        globalInstruction: repo?.gloablInstruction || ''
+    });
+
+    
+    const handleSaveSettings = async () => {
+        // Implement the logic to save the updated settings to the database
+        // You can make an API call to update the repository settings in the backend
+        console.log('Saved Settings:', repoSettings);
+
+        const result = await axios.post('/api/github/user-repo/settings', {
+            repoId: repo.repoId,
+            targetDomain: repoSettings.targetDomain,
+            globalInstruction: repoSettings.globalInstruction,
+        });
+
+        console.log(result?.data);
+        setIsOpen(false);
+        setReload();
+
     }
-  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Settings className="w-4 h-4 mr-2" /> Project Config
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Project Settings</DialogTitle>
-          <DialogDescription>
-            Configure the target environment and global test instructions for this repository. [3]
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-500">App URL / Domain</label>
-            <Input 
-              placeholder="https://your-app.com" 
-              value={repoSettings.targetDomain}
-              onChange={(e) => setRepoSettings({ ...repoSettings, targetDomain: e.target.value })}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-500">Global Test Instructions</label>
-            <Textarea 
-              placeholder="e.g., Use username 'test' and password '123' for login."
-              value={repoSettings.globalInstruction}
-              onChange={(e) => setRepoSettings({ ...repoSettings, globalInstruction: e.target.value })}
-            />
-            <p className="text-[10px] text-gray-400">Add credentials or specific browser instructions here. [4, 5]</p>
-          </div>
-        </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <Button onClick={handleSaveSetting} disabled={loading}>
-            {loading ? 'Saving...' : 'Save Config'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+           <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
+            <DialogTrigger>
+                <Button> <Settings2 className='h-4 2-4 mr-1' /> Project Config</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className='flex gap-2 items-center'> <Settings2 className='text-primary' /> Project/Repo Settings</DialogTitle>
+                    <DialogDescription>
+                        Configure project-level defaults used during script generation and execution.
+                    </DialogDescription>
+                </DialogHeader>
+                <div>
+                    <div>
+                        <label className='text-gray-500'>APP URL/DEFAULT WEBSITE</label>
+                        <Input value={repoSettings?.targetDomain}
+                            onChange={(e) => setRepoSettings({ ...repoSettings, targetDomain: e.target.value })}
+                            placeholder='App url/Domain' className='mt-1' />
+                        <p className='text-xs text-gray-400'>The target address where automated headless browsers will connect and run test cases.</p>
+                    </div>
+                    <div className='mt-4'>
+                        <label className='text-gray-500'>GLOBAL TEST INSTRUCTION</label>
+                        <Textarea value={repoSettings?.globalInstruction}
+                            onChange={(e) => setRepoSettings({ ...repoSettings, globalInstruction: e.target.value })}
+
+                            placeholder='Instructions' className='mt-1' />
+                        <p className='text-xs text-gray-400'>Include any authentication credentials, cookies, setup, or teardown instructions. These are automatically appended to Gemini's prompts.</p>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose>
+                        <Button variant={'outline'}>Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleSaveSettings}>Save Config</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
   )
 }
 
