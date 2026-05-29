@@ -7,7 +7,7 @@ import { Card, CardContent } from '../ui/card'
 import EmptyWorkspace from './EmptyWorkspace'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import RepoDialog, { Repo } from './RepoDialog'
+import RepoDialog from './RepoDialog'
 
 import UserRepoList, { UserRepo } from './UserRepoList'
 
@@ -30,12 +30,11 @@ const WorkspaceMain = () => {
     },[userDetail])
     const getGithubUserToken = async () => {
         const res = await axios.get('/api/github/token')
-        console.log(res.data.token);
         setToken(res.data.token)
 
     }
     const addRepo = () => {
-        router.push('api/github')
+        router.push('/api/github')
     }
     const getAddedRepos = async () =>{
         const result = await axios.get('/api/github/user-repo?userId=' + userDetail?.id)

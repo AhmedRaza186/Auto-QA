@@ -45,10 +45,13 @@ export const TestCasesTable = pgTable("test_cases", {
   expectedResult: text("expected_result"),
 
   // Later you can update these fields
-  browserbaseScript: text("browserbase_script"),
+  playwrightScript: text("playwright_script"),
   status: varchar("status", { length: 100 }).default("generated"),
 
   createdAt: timestamp("created_at").defaultNow(),
+    logs: jsonb("logs").$type<string[]>().default([]),
+  sessionId: varchar("session_id", { length: 255 }),
+  sessionUrl: varchar("session_url", { length: 500 }),
 });
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

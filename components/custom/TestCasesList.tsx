@@ -1,4 +1,3 @@
-import test from 'node:test'
 import React, { useState } from 'react'
 import { TestCase } from './UserRepoList'
 import { Checkbox } from '../ui/checkbox'
@@ -6,6 +5,7 @@ import { Badge } from '../ui/badge'
 import { Play, RefreshCw, Settings, SettingsIcon } from 'lucide-react'
 import { Button } from '../ui/button'
 import TestCaseSettingDialog from './TestCaseSettingDialog'
+import TestExecutionModal from './TestCaseExecutionModel'
 // import TestCaseSettingDialog from './TestCaseSettingDialog'
 // import TestExecutionModal from './TestCaseExecutionModel'
 
@@ -18,6 +18,8 @@ type Props = {
 function TestCasesList({ testCases, onReload, repository }: Props) {
 
     const [selectedTestCases,setSelectedTestCases] = useState<TestCase[]>([])
+        const [isModelOpen, setIsModelOpen] = useState(false);
+
 
     const handleSelectedTestCase = (checked:boolean | string ,testCase:TestCase)=>{
              if (checked) {
@@ -25,6 +27,14 @@ function TestCasesList({ testCases, onReload, repository }: Props) {
         }
         else {
             setSelectedTestCases((prev: any) => prev.filter((item: any) => item.id !== testCase.id))
+        }
+    }
+
+    const handleSelectAll = (checked: boolean | string) => {
+        if (checked) {
+            setSelectedTestCases([...testCases]);
+        } else {
+            setSelectedTestCases([]);
         }
     }
 
@@ -36,6 +46,15 @@ return(
         <Button size={'sm'} onClick={() => onReload(testCases[0]?.repoId)}><RefreshCw className='w-3 h-3 mr-1'/> Refresh</Button>
 </div>
     <div className='border rounded-md mt-3'>
+        {testCases.length > 0 && (
+            <div className='p-4 border-b bg-gray-50 flex items-center gap-3'>
+                <Checkbox 
+                    checked={selectedTestCases.length === testCases.length} 
+                    onCheckedChange={handleSelectAll} 
+                />
+                <span className='text-sm font-medium'>Select All ({selectedTestCases.length}/{testCases.length})</span>
+            </div>
+        )}
         {testCases.map((testCase, index) => (
             <div key={index} className='p-4 border-b flex items-center justify-between'>
                 <div className='flex gap-3 items-center'>
@@ -49,16 +68,26 @@ return(
                 </div>
                 
                 <div className='flex gap-5 '>
-                    <Badge variant={'secondary'}>{testCase?.type}</Badge>
-                    <Badge variant={'secondary'}>Pending</Badge>
+                   <Badge variant={'secondary'} >{testCase?.type}</Badge>
+                            {testCase?.status == 'failed' && <Badge variant={'destructive'} className='text-red-200 font-normal'>{testCase?.status}</Badge>}
+                            {testCase?.status == 'passed' && <Badge variant={'default'} className='text-green-200 font-normal bg-green-700'>{testCase?.status}</Badge>}
+                            {testCase?.status == 'running' && <Badge variant={'default'} className='text-yellow-200 font-normal bg-yellow-700'>{testCase?.status}</Badge>}
+                            {testCase?.status == 'generated' && <Badge variant={'secondary'} >{'Pending'}</Badge>}
                   <TestCaseSettingDialog testCase={testCase} setReload={onReload}/>
                 </div>
             </div>
         ))}
         <div className='flex items-center justify-between p-4 bg-gray-100'>
             <h2>Run Selected test Case</h2>
-            <Button disabled={selectedTestCases.length == 0}><Play className='w-4 h-4 mr-2'/>Run</Button>
+            <Button disabled={selectedTestCases.length == 0} onClick={() => setIsModelOpen(true)}><Play className='w-4 h-4 mr-2'/>Run</Button>
+            
         </div>
+          <TestExecutionModal
+                testCases={selectedTestCases}
+                repository={repository}
+                isOpen={isModelOpen}
+                onClose={() => { setIsModelOpen(false); onReload(repository?.repoId) }}
+            />
     </div>
 </div>
 )

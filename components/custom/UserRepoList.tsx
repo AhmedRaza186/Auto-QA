@@ -55,7 +55,10 @@ export type TestCase = {
     repoOwner: string;
     targetRoute: string;
     status: string;
-    browserbaseScript: string;
+    playwrightScript?: string | null;
+    logs?: string[] | null;
+    sessionId?: string | null;
+    sessionUrl?: string | null;
 }
 
 type StatusData = {
@@ -66,12 +69,6 @@ type StatusData = {
 }
 
 const UserRepoList = ({ repoList , setReload }: Props) => {
-    // Add missing status variables
-    const totalTests = 0
-    const passedTests = 0
-    const failedTests = 0
-    const passRate = 0
-
     const { userDetail } = useContext(UserContext)
     const [loading, setLoading] = useState(false)
     const [testCaseloading, setTestCaseloading] = useState(false)
@@ -179,7 +176,7 @@ const UserRepoList = ({ repoList , setReload }: Props) => {
                                 <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
                                     <StatusCard
                                         title="Total Tests"
-                                        value={totalTests}
+                                        value={statusData?.totalTests}
                                         icon={
                                             <ListChecks className='h-5 w-5 text-blue-600' />
                                         }
@@ -188,7 +185,7 @@ const UserRepoList = ({ repoList , setReload }: Props) => {
 
                                     <StatusCard
                                         title="Passed"
-                                        value={passedTests}
+                                        value={statusData?.passedTests}
                                         icon={
                                             <CheckCircle2 className='h-5 w-5 text-green-600' />
                                         }
@@ -197,7 +194,7 @@ const UserRepoList = ({ repoList , setReload }: Props) => {
 
                                     <StatusCard
                                         title="Failed"
-                                        value={failedTests}
+                                        value={statusData?.failedTests}
                                         icon={
                                             <XCircle className='h-5 w-5 text-red-600' />
                                         }
@@ -206,7 +203,7 @@ const UserRepoList = ({ repoList , setReload }: Props) => {
 
                                     <StatusCard
                                         title="Pass Rate"
-                                        value={`${passRate}%`}
+                                        value={`${statusData?.passRate}%`}
                                         icon={
                                             <TrendingUp className='h-5 w-5 text-purple-600' />
                                         }

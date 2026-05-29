@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
+import { db, users } from '@/db';
+import { eq } from 'drizzle-orm';
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -20,9 +22,19 @@ export async function POST(req: Request) {
   // Handle the event
   switch (event.type) {
     case 'checkout.session.completed':
-      const session = event.data.object;
-      // Fulfill purchase in your database
-      console.log(`Payment successful for checkout session: ${session.id}`);
+      const session = event.data.object as any;
+      const userId = Number(session.metadata?.userId || 0);
+
+      if (userId > 0) {
+        const [currentUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+        if (currentUser) {
+          await db
+            .update(users)
+            .set({ credits: (currentUser.credits || 0) + 1000 })
+            .where(eq(users.id, userId));
+        }
+      }
       break;
     default:
       console.log(`Unhandled event type ${event.type}`);

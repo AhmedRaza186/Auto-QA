@@ -1,10 +1,29 @@
 import { db, repositories } from "@/db";
+import { users } from "@/db/schema";
+import { currentUser } from "@clerk/nextjs/server";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
     try {
+        const clerkUser = await currentUser();
+        const email = clerkUser?.primaryEmailAddress?.emailAddress;
+
+        if (!email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const [dbUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+        if (!dbUser) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
         const { repoId, userId, repoName, full_name, private_, description, owner, language, html_url, default_branch } = await req.json();
+
+        if (Number(userId) !== dbUser.id) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
 
         const existingRepo = await db.select().from(repositories).where(
             and(
@@ -22,7 +41,7 @@ export async function POST(req: NextRequest) {
 
         const result = await db.insert(repositories).values({
             repoId,
-            userId,
+            userId: dbUser.id,
             name: repoName,
             full_name: full_name,
             private_: private_ ? 1 : 0,

@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
     })
 
     const data = res.data
-    console.log(data)
     const token = data.access_token
     
     if (!token) {

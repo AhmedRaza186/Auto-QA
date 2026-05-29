@@ -15,7 +15,6 @@ const Provider = ({
 
     const registerUser = async () => {
         const res = await axios.post('/api/users')
-        console.log(res + '=> resposne');
 
         setUserDetail(res?.data?.user)
     }

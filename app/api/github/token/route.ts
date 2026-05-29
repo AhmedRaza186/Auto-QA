@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req:NextRequest) {
     const cookieStore = await cookies()
     const token = cookieStore.get('github_access_token')?.value

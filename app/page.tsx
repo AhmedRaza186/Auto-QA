@@ -100,7 +100,7 @@ export default function Home() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 w-full sm:w-auto"
         >
           <Link
-            href="/dashboard"
+            href="/workspace"
             className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white text-black font-semibold hover:bg-zinc-200 transition-all shadow-lg shadow-white/5"
           >
             Get Started Free
