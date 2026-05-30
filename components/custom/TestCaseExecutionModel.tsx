@@ -55,7 +55,7 @@ type RunResult = {
 };
 
 export default function TestExecutionModal({ isOpen, onClose, onRunComplete, testCases, repository }: Props) {
-    const [baseUrl, setBaseUrl] = useState("http://localhost:3000");
+    const [baseUrl, setBaseUrl] = useState(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}`);
     const [backendUrl, setBackendUrl] = useState("");
     const [currentIdx, setCurrentIdx] = useState<number>(-1);
     const [isExecuting, setIsExecuting] = useState(false);
