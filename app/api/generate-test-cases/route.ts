@@ -16,24 +16,27 @@ const ALLOWED_EXTENSIONS = [
     ".jsx",
     ".ts",
     ".tsx",
+    ".html",
+    ".css",
+    ".htm",
     ".json",
     ".md",
 ];
 
-const IMPORTANT_FILES = [
-    "package.json",
-    "next.config",
-    "middleware",
-    "app/",
-    "pages/",
-    "components/",
-    "src/",
-    "lib/",
-    "utils/",
-    "actions/",
-    "api/",
-    "server/",
-];
+// const IMPORTANT_FILES = [
+//     "package.json",
+//     "next.config",
+//     "middleware",
+//     "app/",
+//     "pages/",
+//     "components/",
+//     "src/",
+//     "lib/",
+//     "utils/",
+//     "actions/",
+//     "api/",
+//     "server/",
+// ];
 
 const IGNORE_PATHS = [
     "node_modules",
@@ -62,11 +65,8 @@ function isUsefulFile(path: string) {
         path.endsWith(ext)
     );
 
-    const isImportantPath = IMPORTANT_FILES.some((item) =>
-        path.includes(item)
-    );
 
-    return !isIgnored && isAllowedExtension && isImportantPath;
+    return !isIgnored && isAllowedExtension ;
 }
 
 async function getRepoTree({
@@ -259,7 +259,7 @@ Important rules:
 `;
 
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.1-flash-lite",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",

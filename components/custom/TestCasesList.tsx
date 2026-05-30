@@ -68,12 +68,23 @@ return(
                 </div>
                 
                 <div className='flex gap-5 '>
-                   <Badge variant={'secondary'} >{testCase?.type}</Badge>
-                            {testCase?.status == 'failed' && <Badge variant={'destructive'} className='text-red-200 font-normal'>{testCase?.status}</Badge>}
-                            {testCase?.status == 'passed' && <Badge variant={'default'} className='text-green-200 font-normal bg-green-700'>{testCase?.status}</Badge>}
-                            {testCase?.status == 'running' && <Badge variant={'default'} className='text-yellow-200 font-normal bg-yellow-700'>{testCase?.status}</Badge>}
-                            {testCase?.status == 'generated' && <Badge variant={'secondary'} >{'Pending'}</Badge>}
-                  <TestCaseSettingDialog testCase={testCase} setReload={onReload}/>
+                    <Badge variant={'secondary'} >{testCase?.type}</Badge>
+                    {testCase?.status === 'failed' && (
+                        <Badge variant={'destructive'} className='text-red-200 font-normal'>Failed</Badge>
+                    )}
+                    {testCase?.status === 'passed' && (
+                        <Badge variant={'default'} className='text-green-200 font-normal bg-green-700'>Passed</Badge>
+                    )}
+                    {testCase?.status === 'running' && (
+                        <Badge variant={'default'} className='text-yellow-200 font-normal bg-yellow-700'>Running</Badge>
+                    )}
+                    {testCase?.status === 'generated' && (
+                        <Badge variant={'secondary'}>Pending</Badge>
+                    )}
+                    {(!['failed', 'passed', 'running', 'generated'].includes(testCase?.status)) && (
+                        <Badge variant={'secondary'} className='text-gray-600'>Queued</Badge>
+                    )}
+                    <TestCaseSettingDialog testCase={testCase} setReload={onReload}/>
                 </div>
             </div>
         ))}
@@ -86,7 +97,8 @@ return(
                 testCases={selectedTestCases}
                 repository={repository}
                 isOpen={isModelOpen}
-                onClose={() => { setIsModelOpen(false); onReload(repository?.repoId) }}
+                onClose={() => setIsModelOpen(false)}
+                onRunComplete={() => onReload(repository?.repoId)}
             />
     </div>
 </div>

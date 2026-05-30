@@ -38,6 +38,7 @@ import { UserContext } from "@/context/userContext";
 type Props = {
     isOpen: boolean;
     onClose: () => void;
+    onRunComplete?: () => void;
     testCases: TestCase[];
     repository: any; // Connected repository config
 };
@@ -46,19 +47,22 @@ type RunResult = {
     testCaseId: number;
     status: "idle" | "generating" | "running" | "passed" | "failed";
     logs: string[];
+    reason?: string;
     error?: string;
     sessionId?: string;
     sessionUrl?: string;
     playwrightScript?: string;
 };
 
-export default function TestExecutionModal({ isOpen, onClose, testCases, repository }: Props) {
+export default function TestExecutionModal({ isOpen, onClose, onRunComplete, testCases, repository }: Props) {
     const [baseUrl, setBaseUrl] = useState("http://localhost:3000");
     const [backendUrl, setBackendUrl] = useState("");
     const [currentIdx, setCurrentIdx] = useState<number>(-1);
     const [isExecuting, setIsExecuting] = useState(false);
     const [results, setResults] = useState<Record<number, RunResult>>({});
     const [selectedDetailId, setSelectedDetailId] = useState<number | null>(null);
+    // Notify parent to reload test cases after each run
+    const parentOnReload = (window as any).onTestCaseRunReload;
 
     const { userDetail, setUserDetail } = useContext(UserContext);
 
@@ -152,6 +156,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                     [tcId]: {
                         testCaseId: tcId,
                         status: data.status,
+                        reason: data.reason || (data.status === 'passed' ? 'The test completed without runtime errors.' : 'The test failed during execution. See logs for details.'),
                         logs: data.logs || [],
                         playwrightScript: data.playwrightScript,
                         sessionId: data.sessionId,
@@ -177,8 +182,15 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                 }));
             }
 
-            // Move to next item in the queue
-            setCurrentIdx((prev) => prev + 1);
+            const nextIdx = currentIdx + 1;
+            setCurrentIdx(nextIdx);
+
+            if (nextIdx >= testCases.length) {
+                setIsExecuting(false);
+                setTimeout(() => {
+                    onRunComplete?.();
+                }, 300);
+            }
         };
 
         runTest();
@@ -385,6 +397,9 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                                         <p className="text-xs text-gray-500 mt-1">
                                             Expected: {currentSelectedTestCase.expectedResult}
                                         </p>
+                                        <p className="text-xs text-emerald-700 mt-1 font-semibold">
+                                            {currentSelectedResult?.reason || (currentSelectedResult?.status === 'failed' ? 'Reason will appear here after execution.' : 'Ready to run the test case.')}
+                                        </p>
                                     </div>
                                     {currentSelectedResult?.sessionUrl && (
                                         <Button
@@ -425,19 +440,27 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                                             </Badge>
                                         </div>
                                         <div className="flex-1 p-3 bg-gray-950 font-mono text-[11px] text-gray-300 overflow-y-auto flex flex-col gap-1.5 select-text">
-                                            {currentSelectedResult?.logs.map((log, lIdx) => (
-                                                <div key={lIdx} className="leading-relaxed whitespace-pre-wrap">
-                                                    {log.startsWith("[SYSTEM]") ? (
-                                                        <span className="text-blue-400">{log}</span>
-                                                    ) : log.startsWith("[SYSTEM ERROR]") ? (
-                                                        <span className="text-rose-400 font-semibold">{log}</span>
-                                                    ) : log.startsWith("[BROWSER]") ? (
-                                                        <span className="text-purple-400">{log}</span>
-                                                    ) : (
-                                                        <span>{log}</span>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                                                        {currentSelectedResult?.logs
+                                                                                            ?.filter(
+                                                                                                (log) =>
+                                                                                                    log.startsWith("[SYSTEM]") ||
+                                                                                                    log.startsWith("[SYSTEM ERROR]") ||
+                                                                                                    log.startsWith("[BROWSER]") ||
+                                                                                                    log.startsWith("[ERROR]")
+                                                                                            )
+                                                                                            .map((log, lIdx) => (
+                                                                                                <div key={lIdx} className="leading-relaxed whitespace-pre-wrap">
+                                                                                                    {log.startsWith("[SYSTEM]") ? (
+                                                                                                        <span className="text-blue-400">{log}</span>
+                                                                                                    ) : log.startsWith("[SYSTEM ERROR]") ? (
+                                                                                                        <span className="text-rose-400 font-semibold">{log}</span>
+                                                                                                    ) : log.startsWith("[BROWSER]") ? (
+                                                                                                        <span className="text-purple-400">{log}</span>
+                                                                                                    ) : log.startsWith("[ERROR]") ? (
+                                                                                                        <span className="text-red-400">{log}</span>
+                                                                                                    ) : null}
+                                                                                                </div>
+                                                                                            ))}
                                             {currentSelectedResult?.error && (
                                                 <div className="text-red-400 font-bold mt-2 pt-2 border-t border-gray-800">
                                                     Error: {currentSelectedResult.error}
