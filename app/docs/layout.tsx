@@ -1,20 +1,19 @@
-import "./globals.css";
-import type { Metadata } from "next";
+import "../globals.css";
+import type { ReactNode } from "react";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Documentation – Auto-QA",
-  description: "Comprehensive documentation for the Auto-QA platform."
+  description: "Comprehensive documentation for the Auto-QA platform.",
 };
 
 export default function DocsLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: {
+  children: ReactNode;
+}) {
   return (
-    <html lang="en">
-      <body style={{ margin: 0, padding: 0, background: "#0F172A", color: "#F8FAFC" }}>
-        {children}
-      </body>
-    </html>
+    <div style={{ minHeight: "100vh" }}>
+      {children}
+    </div>
   );
-  
 }

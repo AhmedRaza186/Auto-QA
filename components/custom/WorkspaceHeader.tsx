@@ -1,22 +1,91 @@
+'use client'
+
 import { UserButton } from '@clerk/nextjs'
 import Image from 'next/image'
-import React from 'react'
+import Link from 'next/link'
+import React, { useState } from 'react'
+import { C } from '@/app/lib/theme'
+
+const NAV_LINKS = ['Workspace', 'Pricing', 'Docs']
 
 const WorkspaceHeader = () => {
-   return (
-      <div className='flex justify-between w-full p-4'>
-         {/* Logo */}
-         <Image src={"/logo.svg"} alt="logo" width={100} height={100} />
-         {/* menu */}
-         <ul className='flex justify-center gap-8 list-none font-bold'>
-            <li className='hover:text-[#38bdf8] hover:transition-all cursor-pointer'>Workspace</li>
-            <li className='hover:text-[#38bdf8] hover:transition-all cursor-pointer'>Pricing</li>
-            <li className='hover:text-[#38bdf8] hover:transition-all cursor-pointer'>Support</li>
-         </ul>
-         {/* UserButton */}
-         <UserButton />
+  const [hovered, setHovered] = useState<string | null>(null)
+
+  return (
+    <header
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        background: `${C.bg}e6`,
+        backdropFilter: 'blur(18px) saturate(180%)',
+        borderBottom: `1px solid ${C.border}`,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1100,
+          margin: '0 auto',
+          height: 60,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 2rem',
+        }}
+      >
+        {/* Logo */}
+        <Link href="/">
+          <Image src="/logo-white.svg" alt="AutoTest AI" width={110} height={36} style={{ cursor: 'pointer' }} />
+        </Link>
+
+        {/* Nav */}
+        <nav style={{ display: 'flex', gap: 2 }}>
+          {NAV_LINKS.map((label) => {
+            const href = label === 'Workspace' ? '/workspace' : label === 'Docs' ? '/docs' : '#pricing'
+            const isHov = hovered === label
+            return (
+              <Link
+                key={label}
+                href={href}
+                onMouseEnter={() => setHovered(label)}
+                onMouseLeave={() => setHovered(null)}
+                style={{
+                  fontFamily: "'Geist', sans-serif",
+                  fontSize: 13,
+                  color: isHov ? C.ink : C.muted,
+                  textDecoration: 'none',
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  background: isHov ? C.primaryBg : 'transparent',
+                  border: isHov ? `1px solid ${C.primaryMid}` : '1px solid transparent',
+                  transition: 'color 0.2s, background 0.2s, border-color 0.2s',
+                  fontWeight: 500,
+                }}
+              >
+                {label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* User */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: {
+                  width: 34,
+                  height: 34,
+                  border: `2px solid ${C.primaryMid}`,
+                  borderRadius: 999,
+                },
+              },
+            }}
+          />
+        </div>
       </div>
-   )
+    </header>
+  )
 }
 
 export default WorkspaceHeader

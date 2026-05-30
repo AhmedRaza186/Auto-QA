@@ -2,29 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useRef, ReactNode, FC } from "react";
-
-// ─── Design Tokens ───────────────────────────────────────────────
-export const C = {
-  primary: "#6366F1",
-  primaryDark: "#4F46E5",
-  primaryLight: "#818CF8",
-  accent: "#06B6D4",
-  accentLight: "#67E8F9",
-  success: "#10B981",
-  warning: "#F59E0B",
-  danger: "#EF4444",
-  bg: "#0F172A",
-  surface: "#111827",
-  surfaceAlt: "#1E293B",
-  ink: "#F8FAFC",
-  inkMid: "#CBD5E1",
-  muted: "#94A3B8",
-  subtle: "#64748B",
-  border: "#334155",
-  borderMid: "#475569",
-  primaryBg: "#0B1120",
-  primaryMid: "#172554"
-} as const;
+import {C} from './lib/theme'
 
 // ─── Hooks ────────────────────────────────────────────────────────
 function useInView(threshold = 0.12): [React.RefObject<HTMLDivElement>, boolean] {
@@ -185,8 +163,8 @@ const TERM_LINES: { delay: number; color: string; text: string }[] = [
   { delay: 1400, color: C.inkMid, text: "  → 3 routes detected  ·  42 components mapped" },
   { delay: 2100, color: C.primary, text: "✦ Generating test cases with AI..." },
   { delay: 2800, color: C.inkMid, text: "  → 214 test scenarios synthesized" },
-  { delay: 3500, color: C.primary, text: "✦ Launching Browserbase cloud runner..." },
-  { delay: 4200, color: C.inkMid, text: "  → Running 214 tests across 6 browsers" },
+  { delay: 3500, color: C.primary, text: "✦ Launching Playwright test runner..." },
+  { delay: 4200, color: C.inkMid, text: "  → Executing tests across Chromium, Firefox & WebKit" },
   { delay: 5000, color: "#4ade80", text: "✓ 211 passed  ·  3 failed  ·  done in 38s" },
 ];
 
@@ -408,7 +386,7 @@ const AutoTestLanding: FC = () => {
         {/* ── NAV ── */}
         <header style={{
           position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-          background: scrolled ? "rgba(247,250,244,0.88)" : "transparent",
+          background: scrolled ? "transparent" : "transparent",
           backdropFilter: scrolled ? "blur(18px) saturate(180%)" : "none",
           borderBottom: scrolled ? `1px solid ${C.border}` : "none",
           transition: "all 0.4s ease",
@@ -416,13 +394,13 @@ const AutoTestLanding: FC = () => {
           <div style={{ maxWidth: 1200, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2rem" }}>
             {/* Logo */}
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <div style={{
+              {/* <div style={{
                 width: 32, height: 32, borderRadius: 9,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 16, boxShadow: `0 4px 12px ${C.primary}44`,
-              }} />
-                {/* Logo */}
-         <Image src={"/logo-white.png"} alt="logo" width={150} height={150} />
+              }} /> */}
+              {/* Logo */}
+              <Image src={"/logo-white.svg"} alt="logo" width={100} height={100} />
               <span style={{
                 fontFamily: "'Geist Mono', monospace", fontSize: 10, fontWeight: 500,
                 color: C.primary, background: C.primaryBg, border: `1px solid ${C.primaryMid}`,
@@ -433,7 +411,7 @@ const AutoTestLanding: FC = () => {
             {/* Nav links */}
             <nav style={{ display: "flex", gap: 2 }}>
               {(["Features", "How it works", "Docs"] as string[]).map(l => (
-                <a key={l} href={`#${l.toLowerCase().replace(/\s+/g, "-")}`}
+                <a key={l} href={l === "Docs" ? "/docs" : `#${l.toLowerCase().replace(/\s+/g, "-")}`}
                   style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.muted, textDecoration: "none", padding: "6px 14px", borderRadius: 8, transition: "color 0.2s, background 0.2s" }}
                   onMouseEnter={e => { (e.target as HTMLElement).style.color = C.ink; (e.target as HTMLElement).style.background = C.primaryBg; }}
                   onMouseLeave={e => { (e.target as HTMLElement).style.color = C.muted; (e.target as HTMLElement).style.background = "transparent"; }}
@@ -443,10 +421,10 @@ const AutoTestLanding: FC = () => {
 
             {/* CTA */}
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <Link href={'/api/github'}>
-                 <button style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, color: C.muted, background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px" }}>Sign in</button>
-                 <MagicButton>Connect GitHub →</MagicButton>
-               </Link>
+              <Link href={'/workspace'}>
+                <button style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, color: C.muted, background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px" }}>Sign in</button>
+                <MagicButton>Connect GitHub →</MagicButton>
+              </Link>
             </div>
           </div>
         </header>
@@ -461,7 +439,7 @@ const AutoTestLanding: FC = () => {
             <div style={{ marginBottom: 24, ...anim(heroIn, 0) }}>
               <GreenBadge>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.primary, display: "inline-block", animation: "blink 1.6s infinite" }} />
-                Powered by AI + Browserbase — now in beta
+                AI-Powered Playwright Testing
               </GreenBadge>
             </div>
 
@@ -486,13 +464,13 @@ const AutoTestLanding: FC = () => {
               maxWidth: 560, margin: "0 auto 2.5rem",
               ...anim(heroIn, 0.2),
             }}>
-              Connect your GitHub repository, let our AI generate a complete test suite, and watch Browserbase execute them across real cloud browsers — all in minutes.
+             Connect your GitHub repository, let AI generate comprehensive Playwright test suites, execute them automatically, and get detailed reports with actionable insights.
             </p>
 
             {/* CTAs */}
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: "3rem", ...anim(heroIn, 0.3) }}>
-              <MagicButton>⬡ Connect GitHub repo →</MagicButton>
-               <Link href="/demo"><MagicButton primary={false}>▶ Watch 2‑min demo</MagicButton></Link>
+              <Link href="/workspace"><MagicButton>⬡ Connect GitHub repo →</MagicButton></Link>
+              <Link href="/demo"><MagicButton primary={false}>▶ Watch 2‑min demo</MagicButton></Link>
             </div>
 
             {/* Trust chips */}
@@ -708,26 +686,30 @@ const AutoTestLanding: FC = () => {
                 Connect your GitHub repo and have a full AI-generated test suite running in Browserbase within minutes.
               </p>
               <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                <button style={{
-                  fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 14,
-                  padding: "13px 28px", borderRadius: 10, border: "none", cursor: "pointer",
-                  background: "#fff", color: C.primaryDark,
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.2)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "none"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(0,0,0,0.15)"; }}
-                >⬡ Connect GitHub →</button>
-                <button style={{
-                  fontFamily: "'Geist', sans-serif", fontWeight: 500, fontSize: 14,
-                  padding: "13px 28px", borderRadius: 10, cursor: "pointer",
-                  background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)",
-                  color: "#fff", backdropFilter: "blur(8px)",
-                  transition: "background 0.2s",
-                }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.2)"}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)"}
-                >Read the docs</button>
+                <Link href="/workspace">
+                  <button style={{
+                    fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 14,
+                    padding: "13px 28px", borderRadius: 10, border: "none", cursor: "pointer",
+                    background: "#fff", color: C.primaryDark,
+                    boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                  }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.2)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "none"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(0,0,0,0.15)"; }}
+                  >⬡ Connect GitHub →</button>
+                </Link>
+                <Link href="/docs">
+                  <button style={{
+                    fontFamily: "'Geist', sans-serif", fontWeight: 500, fontSize: 14,
+                    padding: "13px 28px", borderRadius: 10, cursor: "pointer",
+                    background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)",
+                    color: "#fff", backdropFilter: "blur(8px)",
+                    transition: "background 0.2s",
+                  }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.2)"}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)"}
+                  >Read the docs</button>
+                </Link>
               </div>
             </div>
           </div>
@@ -745,7 +727,7 @@ const AutoTestLanding: FC = () => {
             </span>
             <div style={{ display: "flex", gap: 24 }}>
               {(["Terms", "Privacy", "Contact", "Docs"] as string[]).map(l => (
-                <a key={l} href="#" style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.subtle, textDecoration: "none", transition: "color 0.2s" }}
+                <a key={l} href={l === "Docs" ? "/docs" : "#"} style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.subtle, textDecoration: "none", transition: "color 0.2s" }}
                   onMouseEnter={e => (e.target as HTMLElement).style.color = C.ink}
                   onMouseLeave={e => (e.target as HTMLElement).style.color = C.subtle}
                 >{l}</a>

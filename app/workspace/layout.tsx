@@ -3,8 +3,7 @@ import React from 'react'
 
 const WorkspaceLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-
-    <div>
+    <div style={{ minHeight: '100vh', background: '#0F172A', fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
       <WorkspaceHeader />
       {children}
     </div>
