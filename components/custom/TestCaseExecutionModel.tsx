@@ -355,7 +355,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                       disabled={isExecuting}
                       onClick={() => setExecutionMode(mode)}
                       style={{
-                        padding: "6px 0", borderRadius: 6, border: "none", cursor: isExecuting ? "not-allowed" : "pointer",
+                        padding: "6px 0", borderRadius: 6, cursor: isExecuting ? "not-allowed" : "pointer",
                         background: executionMode === mode ? C.primaryBg : "transparent",
                         color: executionMode === mode ? C.primary : C.muted,
                         border: executionMode === mode ? `1px solid ${C.primaryMid}` : "1px solid transparent",
