@@ -322,7 +322,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                 <button
                   onClick={stopExecution}
                   style={{
-                    height: 36, padding: "0 20px", borderRadius: 8, border: "none", cursor: "pointer",
+                    height: 36, padding: "0 20px", borderRadius: 8, cursor: "pointer",
                     background: "#2d0a0a", color: "#f87171", border: `1px solid #EF444440`,
                     display: "flex", alignItems: "center", gap: 7,
                     fontFamily: "'Geist', sans-serif", fontSize: 13, fontWeight: 600, transition: "all 0.2s",
