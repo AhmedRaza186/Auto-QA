@@ -1,8 +1,9 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useRef, ReactNode, FC } from "react";
+import { useState, useEffect, useRef, ReactNode, FC, useContext } from "react";
 import {C} from './lib/theme'
+import { UserContext } from "@/context/userContext";
 
 // ─── Hooks ────────────────────────────────────────────────────────
 function useInView(threshold = 0.12): [React.RefObject<HTMLDivElement>, boolean] {
@@ -224,7 +225,7 @@ const PIPELINE: { icon: string; label: string; sub: string }[] = [
   { icon: "⬡", label: "GitHub Repo", sub: "Connect & clone" },
   { icon: "✦", label: "AI Analysis", sub: "Map routes + flows" },
   { icon: "⚙", label: "Test Generation", sub: "214 scenarios" },
-  { icon: "☁", label: "Browserbase", sub: "Cloud execution" },
+  { icon: "☁", label: "Playwright", sub: "Cloud execution" },
   { icon: "✓", label: "Results", sub: "Report + video" },
 ];
 
@@ -300,7 +301,7 @@ interface Feature { icon: string; label: string; body: string; accent: string }
 const FEATURES: Feature[] = [
   { icon: "⬡", label: "GitHub Integration", body: "Connect any public or private repo in one click. We clone, analyze your routes, components, and user flows automatically.", accent: C.primary },
   { icon: "✦", label: "AI Test Generation", body: "Our model reads your codebase and synthesizes exhaustive test scenarios — edge cases included — in plain English first.", accent: "#2e7d32" },
-  { icon: "☁", label: "Browserbase Execution", body: "Tests run in real cloud browsers via Browserbase. Chrome, Firefox, WebKit — all viewports, zero infrastructure.", accent: "#558b2f" },
+  { icon: "☁", label: "Playwright Execution", body: "Tests run in real cloud browsers via Playwright. Chrome, Firefox, WebKit — all viewports, zero infrastructure.", accent: "#558b2f" },
   { icon: "🎬", label: "Session Recordings", body: "Every run is recorded. Replay failing tests frame-by-frame to instantly understand what broke and where.", accent: "#33691e" },
   { icon: "🔁", label: "Auto-Healing Tests", body: "When your UI shifts, selectors adapt automatically. No more maintaining brittle XPath strings by hand.", accent: C.primaryDark },
   { icon: "📊", label: "Actionable Reports", body: "Rich diffs, traces, root-cause explanations, and suggested code fixes — not just a pass/fail count.", accent: "#1b5e20" },
@@ -311,7 +312,7 @@ interface Step { n: string; icon: string; title: string; desc: string }
 const STEPS: Step[] = [
   { n: "01", icon: "⬡", title: "Connect your GitHub repo", desc: "Authorize GitHub and select a repository. AutoTest reads your branch, pulls the code, and begins mapping your application structure." },
   { n: "02", icon: "✦", title: "AI generates test cases", desc: "Our model analyzes routes, components, and user flows. It outputs a full test suite — E2E journeys, edge cases, and regression checks." },
-  { n: "03", icon: "☁", title: "Browserbase runs the tests", desc: "Tests execute in real browsers on Browserbase's cloud grid. Parallel runs, multiple viewports, full session recordings included." },
+  { n: "03", icon: "☁", title: "Playwright runs the tests", desc: "Tests execute in real browsers on Playwright's cloud grid. Parallel runs, multiple viewports, full session recordings included." },
   { n: "04", icon: "✓", title: "Review results & iterate", desc: "Get a structured report with pass/fail status, video replays, diffs, and AI-generated fix suggestions. Ship with confidence." },
 ];
 
@@ -359,6 +360,8 @@ const AutoTestLanding: FC = () => {
   const [featRef, featIn] = useInView(0.1);
   const [stepsRef, stepsIn] = useInView(0.1);
   const [statsRef, statsIn] = useInView(0.3);
+    const { userDetail, setUserDetail } = useContext(UserContext);
+  console.log(userDetail)
   const scrolled = scrollY > 30;
 
   const anim = (inView: boolean, delay = 0, from = "translateY(20px)"): React.CSSProperties => ({
@@ -423,7 +426,7 @@ const AutoTestLanding: FC = () => {
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <Link href={'/workspace'}>
                 <button style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, color: C.muted, background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px" }}>Sign in</button>
-                <MagicButton>Connect GitHub →</MagicButton>
+                <MagicButton>{userDetail ? `Go to Workspace` : `Connect GitHub →`}</MagicButton>
               </Link>
             </div>
           </div>
@@ -469,13 +472,13 @@ const AutoTestLanding: FC = () => {
 
             {/* CTAs */}
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: "3rem", ...anim(heroIn, 0.3) }}>
-              <Link href="/workspace"><MagicButton>⬡ Connect GitHub repo →</MagicButton></Link>
+              <Link href="/workspace"><MagicButton>⬡ {userDetail ? `Go to Workspace` : `Connect GitHub repo →`}</MagicButton></Link>
               <Link href="/demo"><MagicButton primary={false}>▶ Watch 2‑min demo</MagicButton></Link>
             </div>
 
             {/* Trust chips */}
             <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", ...anim(heroIn, 0.4) }}>
-              {["No credit card required", "Works with any Next.js / React app", "Browserbase cloud included"].map(t => (
+              {["No credit card required", "Works with any Next.js / React app", "Playwright Tests included"].map(t => (
                 <span key={t} style={{ fontFamily: "'Geist', sans-serif", fontSize: 12.5, color: C.subtle, display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ color: C.primary, fontWeight: 700 }}>✓</span> {t}
                 </span>
@@ -603,7 +606,7 @@ const AutoTestLanding: FC = () => {
           </div>
         </section>
 
-        {/* ── BROWSERBASE CALLOUT ── */}
+        {/* ── PLAYWRIGHT CALLOUT ── */}
         <section style={{ maxWidth: 1100, margin: "0 auto", padding: "5rem 2rem" }}>
           <div style={{
             background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20,
@@ -611,12 +614,12 @@ const AutoTestLanding: FC = () => {
             alignItems: "center", boxShadow: "0 4px 24px rgba(13,26,5,0.06)",
           }}>
             <div>
-              <GreenBadge>Powered by Browserbase</GreenBadge>
+              <GreenBadge>Powered by Playwright</GreenBadge>
               <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", color: C.ink, marginTop: 16, marginBottom: 14, lineHeight: 1.15, letterSpacing: "-0.025em" }}>
                 Real browsers.<br />Zero infrastructure.
               </h3>
               <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 14.5, color: C.muted, lineHeight: 1.7, marginBottom: 24 }}>
-                We use Browserbase to spin up headless Chrome, Firefox, and WebKit instances in the cloud. Your tests run in authentic browser environments — no Selenium grids to manage, no Docker to configure.
+                We use Playwright to spin up headless Chrome, Firefox, and WebKit instances in the cloud. Your tests run in authentic browser environments — no Selenium grids to manage, no Docker to configure.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[
@@ -683,7 +686,7 @@ const AutoTestLanding: FC = () => {
                 <em>Always.</em>
               </h2>
               <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 15.5, color: "rgba(255,255,255,0.72)", maxWidth: 460, margin: "0 auto 2.5rem", lineHeight: 1.65 }}>
-                Connect your GitHub repo and have a full AI-generated test suite running in Browserbase within minutes.
+                Connect your GitHub repo and have a full AI-generated test suite running in Playwright within minutes.
               </p>
               <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
                 <Link href="/workspace">

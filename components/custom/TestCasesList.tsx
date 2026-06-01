@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import React, { useState } from 'react'
 import { TestCase } from './UserRepoList'
@@ -224,9 +224,9 @@ function TestCasesList({ testCases, onReload, repository }: Props) {
 
       <TestExecutionModal
         testCases={selectedTestCases}
-        repository={repository}
         isOpen={isModelOpen}
         onClose={() => setIsModelOpen(false)}
+        repository={repository}
       />
     </div>
   )

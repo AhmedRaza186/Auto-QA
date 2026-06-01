@@ -5,7 +5,7 @@ import { TestCasesTable, repositories, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 // Import from 'playwright' instead of 'playwright-core' for local launching
-import { chromium } from "playwright"; 
+import { chromium } from "playwright";
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY!,
@@ -332,114 +332,194 @@ Only use fields actually found in:
                 .where(eq(TestCasesTable.id, testCase.id));
         }
 
-        const logs: string[] = [];
-        const customConsole = {
-            log: (...args: any[]) => logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')),
-            error: (...args: any[]) => logs.push(`[ERROR] ` + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')),
-            warn: (...args: any[]) => logs.push(`[WARN] ` + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '))
-        };
-
         let browser: any = null;
+        let isCancelled = false;
+        const encoder = new TextEncoder();
 
-        try {
-        // Define AsyncFunction constructor for validation (allows top‑level await)
-        const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
-        // Validate syntax before launching browser to fail early – using AsyncFunction so that `await` is allowed
-        try {
-            new AsyncFunction("page", "assert", "console", scriptText);
-        } catch (syntaxError: any) {
-            throw new Error("Generated script has syntax error: " + syntaxError.message);
-        }
-        
-        // 4. Create local Playwright session
-        logs.push(`[SYSTEM] Starting local Playwright browser...`);
-        
+        const stream = new ReadableStream({
+            async start(controller) {
+                const sendStream = (data: any) => {
+                    if (isCancelled) return;
+                    try {
+                        controller.enqueue(encoder.encode(JSON.stringify(data) + "\n"));
+                    } catch (e) {
+                        // ignore if stream controller is already closed
+                    }
+                };
 
-            browser = await chromium.launch({ headless: true });
-            const context = await browser.newContext();
-            const page = await context.newPage();
+                const logs: string[] = [];
 
-            // 6. Listen to Browser Console Events
-            page.on("console", (msg: any) => {
-                logs.push(`[BROWSER] [${msg.type().toUpperCase()}] ${msg.text()}`);
-            });
+                const customConsole = {
+                    log: (...args: any[]) => {
+                        const line = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+                        logs.push(line);
+                        sendStream({ type: "log", message: line });
+                    },
+                    error: (...args: any[]) => {
+                        const line = `[ERROR] ` + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+                        logs.push(line);
+                        sendStream({ type: "log", message: line });
+                    },
+                    warn: (...args: any[]) => {
+                        const line = `[WARN] ` + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+                        logs.push(line);
+                        sendStream({ type: "log", message: line });
+                    }
+                };
 
-            logs.push(`[SYSTEM] Browser launched successfully, executing script...`);
+                try {
+                    if (isCancelled) throw new Error("Execution aborted by client cancellation.");
 
-            // 7. Compile and run script
-    
-            const runFn = new AsyncFunction("page", "assert", "console", scriptText);
+                    // Define AsyncFunction constructor for validation (allows top‑level await)
+                    const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+                    // Validate syntax before launching browser to fail early
+                    try {
+                        new AsyncFunction("page", "assert", "console", scriptText);
+                    } catch (syntaxError: any) {
+                        throw new Error("Generated script has syntax error: " + syntaxError.message);
+                    }
 
-            // Mock assertion helper for runtime container if script assumes assert is global
-            const assertHelper = (condition: boolean, message?: string) => {
-                if (!condition) {
-                    throw new Error(message || "Assertion failed");
+                    // 4. Create local Playwright session
+                    const msgStart = `[SYSTEM] Starting local Playwright browser...`;
+                    logs.push(msgStart);
+                    sendStream({ type: "log", message: msgStart });
+
+                    if (isCancelled) throw new Error("Execution aborted by client cancellation.");
+
+                    // Launch browser
+                    browser = await chromium.launch({ headless: true });
+
+                    if (isCancelled) {
+                        await browser.close().catch(() => {});
+                        browser = null;
+                        throw new Error("Execution aborted by client cancellation.");
+                    }
+
+                    const context = await browser.newContext();
+                    const page = await context.newPage();
+
+                    // 6. Listen to Browser Console Events
+                    page.on("console", (msg: any) => {
+                        const line = `[BROWSER] [${msg.type().toUpperCase()}] ${msg.text()}`;
+                        logs.push(line);
+                        sendStream({ type: "log", message: line });
+                    });
+
+                    const msgLaunch = `[SYSTEM] Browser launched successfully, executing script...`;
+                    logs.push(msgLaunch);
+                    sendStream({ type: "log", message: msgLaunch });
+
+                    if (isCancelled) throw new Error("Execution aborted by client cancellation.");
+
+                    // 7. Compile and run script
+                    const runFn = new AsyncFunction("page", "assert", "console", scriptText);
+
+                    // Mock assertion helper for runtime container if script assumes assert is global
+                    const assertHelper = (condition: boolean, message?: string) => {
+                        if (!condition) {
+                            throw new Error(message || "Assertion failed");
+                        }
+                    };
+
+                    await runFn(page, assertHelper, customConsole);
+
+                    const msgComplete = `[SYSTEM] Script execution completed successfully without errors.`;
+                    logs.push(msgComplete);
+                    sendStream({ type: "log", message: msgComplete });
+
+                    // 8. Clean up session and browser
+                    await page.close().catch(() => { });
+                    await browser.close().catch(() => { });
+                    browser = null;
+
+                    // 9. Update DB Status to passed
+                    await db
+                        .update(TestCasesTable)
+                        .set({
+                            status: "passed",
+                            playwrightScript: scriptText,
+                            logs,
+                        })
+                        .where(eq(TestCasesTable.id, testCase.id));
+
+                    // 10. Deduct credits
+                    const newCredits = user.credits - creditDeduction;
+                    await db.update(users).set({ credits: newCredits }).where(eq(users.id, user.id));
+
+                    sendStream({
+                        type: "result",
+                        success: true,
+                        status: "passed",
+                        logs,
+                        error: null,
+                        playwrightScript: scriptText,
+                        credits: newCredits,
+                    });
+                } catch (execError: any) {
+                    console.error("Script execution error:", execError);
+
+                    const msgFail = `[SYSTEM ERROR] Script execution failed: ${execError.message || String(execError)}`;
+                    logs.push(msgFail);
+                    sendStream({ type: "log", message: msgFail });
+
+                    // Clean up session and browser if still active
+                    if (browser) {
+                        await browser.close().catch(() => { });
+                        browser = null;
+                    }
+
+                    // 10. Update DB Status to failed
+                    await db
+                        .update(TestCasesTable)
+                        .set({
+                            status: "failed",
+                            playwrightScript: scriptText,
+                            logs,
+                        })
+                        .where(eq(TestCasesTable.id, testCase.id));
+
+                    // 11. Deduct credits
+                    const newCredits = user.credits - creditDeduction;
+                    await db.update(users).set({ credits: newCredits }).where(eq(users.id, user.id));
+
+                    sendStream({
+                        type: "result",
+                        success: false,
+                        status: "failed",
+                        logs,
+                        error: execError.message || String(execError),
+                        playwrightScript: scriptText,
+                        credits: newCredits,
+                    });
+                } finally {
+                    // Always close browser if still opened
+                    if (browser) {
+                        await browser.close().catch(() => { });
+                        browser = null;
+                    }
+                    try {
+                        controller.close();
+                    } catch (e) {
+                        // ignore if already closed
+                    }
                 }
-            };
-
-            await runFn(page, assertHelper, customConsole);
-
-            logs.push(`[SYSTEM] Script execution completed successfully without errors.`);
-
-            // 8. Clean up session and browser
-            await page.close().catch(() => { });
-            await browser.close().catch(() => { });
-
-            // 9. Update DB Status to passed
-            await db
-                .update(TestCasesTable)
-                .set({
-                    status: "passed",
-                    playwrightScript: scriptText,
-                    logs,
-                })
-                .where(eq(TestCasesTable.id, testCase.id));
-
-            // 10. Deduct credits
-            const newCredits = user.credits - creditDeduction;
-            await db.update(users).set({ credits: newCredits }).where(eq(users.id, user.id));
-
-            return NextResponse.json({
-                success: true,
-                status: "passed",
-                reason: "The test completed without Playwright assertion or runtime errors.",
-                logs,
-                playwrightScript: scriptText,
-                credits: newCredits,
-            });
-        } catch (execError: any) {
-            console.error("Script execution error:", execError);
-            logs.push(`[SYSTEM ERROR] Script execution failed: ${execError.message || String(execError)}`);
-
-            // Clean up session and browser if still active
-            if (browser) {
-                await browser.close().catch(() => { });
+            },
+            cancel() {
+                isCancelled = true;
+                if (browser) {
+                    browser.close().catch(() => { });
+                    browser = null;
+                }
             }
+        });
 
-            // 10. Update DB Status to failed
-            await db
-                .update(TestCasesTable)
-                .set({
-                    status: "failed",
-                    playwrightScript: scriptText,
-                    logs,
-                })
-                .where(eq(TestCasesTable.id, testCase.id));
-
-            // 11. Deduct credits (we still charge for failed executions as resources were used)
-            const newCredits = user.credits - creditDeduction;
-            await db.update(users).set({ credits: newCredits }).where(eq(users.id, user.id));
-
-            return NextResponse.json({
-                success: false,
-                status: "failed",
-                reason: `The test failed: ${execError.message || String(execError)}`,
-                error: execError.message || String(execError),
-                logs,
-                playwrightScript: scriptText,
-                credits: newCredits,
-            });
-        }
+        return new Response(stream, {
+            headers: {
+                "Content-Type": "application/x-ndjson",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            },
+        });
     } catch (error: any) {
         console.error("API endpoint error:", error);
         return NextResponse.json(

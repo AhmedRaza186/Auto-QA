@@ -34,10 +34,10 @@ import { UserContext } from "@/context/userContext";
 import { C } from "@/app/lib/theme";
 
 type Props = {
+  testCases: TestCase[];
   isOpen: boolean;
   onClose: () => void;
-  onRunComplete?: () => void;
-  testCases: TestCase[];
+  // onRunComplete?: () => void;
   repository: any;
 };
 
@@ -45,6 +45,8 @@ type RunResult = {
   testCaseId: number;
   status: "idle" | "generating" | "running" | "passed" | "failed";
   logs: string[];
+  humanReadable?: string;
+  isAnalyzing?: boolean;
   reason?: string;
   error?: string;
   sessionId?: string;
@@ -70,9 +72,9 @@ function StatusBadge({ status, isRunning }: { status: RunResult["status"]; isRun
   }
   const map: Record<string, { bg: string; color: string; border: string; icon: React.ReactNode; label: string }> = {
     generating: { bg: C.primaryBg, color: C.primaryLight, border: C.primaryMid, icon: <Loader2 style={{ width: 10, height: 10, animation: "spin 1s linear infinite" }} />, label: "Generating" },
-    passed:     { bg: "#022c22", color: "#34d399", border: "#10B98140", icon: <CheckCircle2 style={{ width: 10, height: 10 }} />, label: "Passed" },
-    failed:     { bg: "#2d0a0a", color: "#f87171", border: "#EF444440", icon: <XCircle style={{ width: 10, height: 10 }} />, label: "Failed" },
-    idle:       { bg: C.surfaceAlt, color: C.subtle, border: C.border, icon: null, label: "Queued" },
+    passed: { bg: "#022c22", color: "#34d399", border: "#10B98140", icon: <CheckCircle2 style={{ width: 10, height: 10 }} />, label: "Passed" },
+    failed: { bg: "#2d0a0a", color: "#f87171", border: "#EF444440", icon: <XCircle style={{ width: 10, height: 10 }} />, label: "Failed" },
+    idle: { bg: C.surfaceAlt, color: C.subtle, border: C.border, icon: null, label: "Queued" },
   };
   const s = map[status] ?? map.idle;
   return (
@@ -88,7 +90,7 @@ function StatusBadge({ status, isRunning }: { status: RunResult["status"]; isRun
   );
 }
 
-export default function TestExecutionModal({ isOpen, onClose, testCases, repository }: Props) {
+export default function TestExecutionModal({ testCases, isOpen, onClose, repository }: Props) {
   const [baseUrl, setBaseUrl] = useState(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}`);
   const [backendUrl, setBackendUrl] = useState("");
   const [currentIdx, setCurrentIdx] = useState<number>(-1);
@@ -99,6 +101,47 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
   const [executionMode, setExecutionMode] = useState<"cache" | "generate">("cache");
   const [customPrompt, setCustomPrompt] = useState("");
   const [showOptions, setShowOptions] = useState(false);
+
+  const analyzeLogs = async (testCaseId: number) => {
+    const current = results[testCaseId];
+
+    setResults(prev => ({
+      ...prev,
+      [testCaseId]: {
+        ...prev[testCaseId],
+        isAnalyzing: true,
+      },
+    }));
+
+    try {
+      const res = await axios.post(
+        "/api/test-cases/analyze",
+        {
+          logs: current.logs,
+          status: current.status,
+          error: current.error,
+        }
+      );
+
+      setResults(prev => ({
+        ...prev,
+        [testCaseId]: {
+          ...prev[testCaseId],
+          humanReadable: res.data.analysis,
+          isAnalyzing: false,
+        },
+      }));
+    } catch {
+      setResults(prev => ({
+        ...prev,
+        [testCaseId]: {
+          ...prev[testCaseId],
+          humanReadable: "Failed to generate analysis",
+          isAnalyzing: false,
+        },
+      }));
+    }
+  };
 
   useEffect(() => {
     if (isOpen && testCases.length > 0) {
@@ -137,42 +180,158 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
       const tcId = currentTestCase.id;
       setSelectedDetailId(tcId);
       const isRegenerating = executionMode === "generate" || !results[tcId]?.playwrightScript;
+      
+      // Clear humanReadable, isAnalyzing, error and old logs from previous executions when starting
       setResults((prev) => ({
         ...prev,
         [tcId]: {
           ...prev[tcId],
           status: isRegenerating ? "generating" : "running",
+          humanReadable: undefined,
+          isAnalyzing: false,
+          error: undefined,
           logs: [isRegenerating
             ? "[SYSTEM] Connecting to AI agent to analyze files and generate script..."
             : "[SYSTEM] Found pre-generated script cached in database, preparing execution..."],
         },
       }));
-      try {
-        const res = await axios.post("/api/test-cases/run", {
-          testCaseId: tcId,
-          baseUrl: baseUrl.trim(),
-          backendUrl: backendUrl.trim(),
-          mode: executionMode,
-          customPrompt: customPrompt.trim(),
-        });
-        const data = res.data;
-        if (data.credits !== undefined) setUserDetail((prev: any) => ({ ...prev, credits: data.credits }));
-        setResults((prev) => ({
-          ...prev,
-          [tcId]: {
-            testCaseId: tcId,
-            status: data.status,
-            reason: data.reason || (data.status === "passed" ? "The test completed without runtime errors." : "The test failed during execution. See logs for details."),
-            logs: data.logs || [],
-            playwrightScript: data.playwrightScript,
-            sessionId: data.sessionId,
-            sessionUrl: data.sessionUrl,
-            error: data.error,
-          },
-        }));
-      } catch (err: any) {
-        const errMsg = err.response?.data?.error || err.message || "Execution failed";
-        if (err.response?.data?.credits !== undefined) setUserDetail((prev: any) => ({ ...prev, credits: err.response.data.credits }));
+
+      const maxRetries = 2; // Initial attempt + 2 retries
+      let success = false;
+      let lastError: any = null;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (attempt > 0) {
+          // Log retry in terminal for the user
+          setResults((prev) => {
+            const currentResult = prev[tcId] || { logs: [] };
+            return {
+              ...prev,
+              [tcId]: {
+                ...currentResult,
+                logs: [...(currentResult.logs || []), `[SYSTEM] API connection failed. Retrying in ${attempt * 1.5}s (Attempt ${attempt} of ${maxRetries})...`],
+              },
+            };
+          });
+          // Wait for backoff
+          await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+        }
+
+        try {
+          const response = await fetch("/api/test-cases/run", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              testCaseId: tcId,
+              baseUrl: baseUrl.trim(),
+              backendUrl: backendUrl.trim(),
+              mode: executionMode,
+              customPrompt: customPrompt.trim(),
+            }),
+          });
+
+          // Immediate failure on 4xx validation or client error (no retries)
+          if (response.status >= 400 && response.status < 500) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || `Execution failed with status ${response.status}`);
+          }
+
+          if (!response.ok) {
+            throw new Error(`Server returned status ${response.status}`);
+          }
+
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const data = await response.json();
+            if (data.credits !== undefined) setUserDetail((prev: any) => ({ ...prev, credits: data.credits }));
+            setResults((prev) => ({
+              ...prev,
+              [tcId]: {
+                testCaseId: tcId,
+                status: data.status,
+                reason: data.reason || (data.status === "passed" ? "The test completed without runtime errors." : "The test failed during execution. See logs for details."),
+                logs: [...(prev[tcId]?.logs || []), ...(data.logs || [])],
+                playwrightScript: data.playwrightScript,
+                humanReadable: undefined,
+                sessionId: data.sessionId,
+                sessionUrl: data.sessionUrl,
+                error: data.error,
+              },
+            }));
+          } else {
+            // Read log chunks as stream
+            const reader = response.body?.getReader();
+            if (!reader) {
+              throw new Error("Response body is not readable");
+            }
+
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                  const parsed = JSON.parse(line);
+                  if (parsed.type === "log") {
+                    setResults((prev) => {
+                      const currentResult = prev[tcId] || { logs: [] };
+                      return {
+                        ...prev,
+                        [tcId]: {
+                          ...currentResult,
+                          logs: [...(currentResult.logs || []), parsed.message],
+                        },
+                      };
+                    });
+                  } else if (parsed.type === "result") {
+                    if (parsed.credits !== undefined) setUserDetail((prev: any) => ({ ...prev, credits: parsed.credits }));
+                    setResults((prev) => ({
+                      ...prev,
+                      [tcId]: {
+                        testCaseId: tcId,
+                        status: parsed.status,
+                        reason: parsed.status === "passed" ? "The test completed without runtime errors." : "The test failed during execution. See logs for details.",
+                        logs: parsed.logs,
+                        playwrightScript: parsed.playwrightScript,
+                        humanReadable: undefined,
+                        sessionId: parsed.sessionId,
+                        sessionUrl: parsed.sessionUrl,
+                        error: parsed.error,
+                      },
+                    }));
+                  }
+                } catch (e) {
+                  console.error("Failed to parse stream line:", line, e);
+                }
+              }
+            }
+          }
+
+          success = true;
+          break; // Exit retry loop on success!
+        } catch (err: any) {
+          lastError = err;
+          // If it was a non-retryable validation or account credit error, abort retries
+          const lowerMsg = (err.message || "").toLowerCase();
+          if (responseStatusIsClientError(err) || lowerMsg.includes("credits") || lowerMsg.includes("credit") || lowerMsg.includes("not found")) {
+            break;
+          }
+          console.warn(`Execution attempt ${attempt + 1} failed: ${err.message}. Retrying...`);
+        }
+      }
+
+      if (!success) {
+        const errMsg = lastError?.message || "Execution failed after multiple attempts";
         setResults((prev) => ({
           ...prev,
           [tcId]: {
@@ -182,6 +341,12 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
             logs: [...(prev[tcId]?.logs || []), `[SYSTEM ERROR] ${errMsg}`],
           },
         }));
+      }
+
+      // Small helper to detect client validation error types
+      function responseStatusIsClientError(error: any) {
+        const msg = error.message || "";
+        return msg.includes("status 40");
       }
       const nextIdx = currentIdx + 1;
       setCurrentIdx(nextIdx);
@@ -307,12 +472,12 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                     boxShadow: `0 4px 14px ${C.primary}38`, transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    ;(e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"
-                    ;(e.currentTarget as HTMLButtonElement).style.boxShadow = `0 8px 24px ${C.primary}55`
+                    ; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"
+                      ; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 8px 24px ${C.primary}55`
                   }}
                   onMouseLeave={(e) => {
-                    ;(e.currentTarget as HTMLButtonElement).style.transform = "none"
-                    ;(e.currentTarget as HTMLButtonElement).style.boxShadow = `0 4px 14px ${C.primary}38`
+                    ; (e.currentTarget as HTMLButtonElement).style.transform = "none"
+                      ; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 4px 14px ${C.primary}38`
                   }}
                 >
                   <Play style={{ width: 13, height: 13 }} />
@@ -604,6 +769,125 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                       )}
                     </div>
                   </div>
+
+                  {/* ── Convert Into Human Readable Button ── */}
+                  {(currentSelectedResult?.status === "passed" || currentSelectedResult?.status === "failed") && 
+                   !currentSelectedResult?.isAnalyzing && 
+                   !currentSelectedResult?.humanReadable && (
+                    <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+                      <button
+                        onClick={() => analyzeLogs(currentSelectedTestCase.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          fontFamily: "'Geist', sans-serif",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          padding: "10px 24px",
+                          borderRadius: 8,
+                          border: `1px solid ${C.primaryLight}40`,
+                          background: `linear-gradient(135deg, ${C.primaryBg}, ${C.primaryMid})`,
+                          color: C.ink,
+                          cursor: "pointer",
+                          boxShadow: `0 4px 20px ${C.primary}15`,
+                          transition: "all 0.2s ease-in-out",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-1px)";
+                          e.currentTarget.style.boxShadow = `0 8px 24px ${C.primary}30`;
+                          e.currentTarget.style.borderColor = C.primaryLight;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "none";
+                          e.currentTarget.style.boxShadow = `0 4px 20px ${C.primary}15`;
+                          e.currentTarget.style.borderColor = `${C.primaryLight}40`;
+                        }}
+                      >
+                        <Sparkles style={{ width: 14, height: 14, color: C.accentLight }} />
+                        Convert Into Human Readable
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── LOADING state ── */}
+                  {currentSelectedResult?.isAnalyzing && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 10,
+                        padding: "18px",
+                        marginTop: 16,
+                        borderRadius: 12,
+                        border: `1px solid ${C.border}`,
+                        background: C.surface,
+                        color: C.inkMid,
+                        fontFamily: "'Geist', sans-serif",
+                        fontSize: 13,
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+                      }}
+                    >
+                      <Loader2
+                        style={{
+                          width: 16,
+                          height: 16,
+                          color: C.primary,
+                          animation: "spin 1s linear infinite",
+                        }}
+                      />
+                      <span>Analyzing logs with AI...</span>
+                    </div>
+                  )}
+
+                  {/* ── AI Analysis card ── */}
+                  {currentSelectedResult?.humanReadable && (
+                    <div
+                      style={{
+                        background: `linear-gradient(180deg, ${C.surface} 0%, ${C.primaryBg} 100%)`,
+                        border: `1px solid ${C.primaryMid}`,
+                        borderRadius: 12,
+                        padding: "1.25rem",
+                        marginTop: 16,
+                        boxShadow: `0 10px 30px rgba(0,0,0,0.3), 0 0 0 1px ${C.primaryMid}30`,
+                        transition: "all 0.3s ease",
+                      }}
+                    >
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 12,
+                        borderBottom: `1px solid ${C.border}`,
+                        paddingBottom: 8,
+                      }}>
+                        <Sparkles style={{ width: 15, height: 15, color: C.accentLight }} />
+                        <h4 style={{
+                          fontFamily: "'Space Grotesk', sans-serif",
+                          fontWeight: 700,
+                          fontSize: 13.5,
+                          color: C.ink,
+                          margin: 0,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}>
+                          AI Analysis &amp; Explanation
+                        </h4>
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'Geist', sans-serif",
+                          fontSize: 13,
+                          color: C.inkMid,
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.7,
+                        }}
+                      >
+                        {currentSelectedResult.humanReadable}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -648,13 +932,13 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
             }}
             onMouseEnter={(e) => {
               if (!isExecuting) {
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = C.borderMid
-                ;(e.currentTarget as HTMLButtonElement).style.color = C.ink
+                ; (e.currentTarget as HTMLButtonElement).style.borderColor = C.borderMid
+                  ; (e.currentTarget as HTMLButtonElement).style.color = C.ink
               }
             }}
             onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = C.border
-              ;(e.currentTarget as HTMLButtonElement).style.color = C.inkMid
+              ; (e.currentTarget as HTMLButtonElement).style.borderColor = C.border
+                ; (e.currentTarget as HTMLButtonElement).style.color = C.inkMid
             }}
           >
             <X style={{ width: 14, height: 14 }} />
