@@ -3,6 +3,7 @@ import { UserContext } from '@/context/userContext'
 import Image from 'next/image'
 import React, { useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import axios from 'axios'
 import RepoDialog from './RepoDialog'
 import UserRepoList, { UserRepo } from './UserRepoList'
@@ -13,6 +14,7 @@ import { Zap, GitBranch } from 'lucide-react'
 const WorkspaceMain = () => {
   const { userDetail } = useContext(UserContext)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [token, setToken] = useState('')
   const [userRepoList, setUserRepoList] = useState<UserRepo[]>([])
 
@@ -42,6 +44,24 @@ const WorkspaceMain = () => {
 
   return (
     <div>
+      {(searchParams.get('success') === 'true' || searchParams.get('canceled') === 'true') && (
+        <div
+          style={{
+            marginBottom: '1.25rem',
+            background: searchParams.get('success') === 'true' ? '#022c22' : '#1c1a08',
+            border: `1px solid ${searchParams.get('success') === 'true' ? '#10B98140' : '#F59E0B40'}`,
+            borderRadius: 12,
+            padding: '10px 14px',
+            fontFamily: "'Geist', sans-serif",
+            fontSize: 13,
+            color: searchParams.get('success') === 'true' ? '#34d399' : '#fbbf24',
+          }}
+        >
+          {searchParams.get('success') === 'true'
+            ? 'Payment successful. Credits will be updated shortly.'
+            : 'Payment canceled. No changes were made.'}
+        </div>
+      )}
       {/* Page Header */}
       <div
         style={{

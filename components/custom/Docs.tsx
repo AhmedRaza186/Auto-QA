@@ -116,7 +116,7 @@ export default function DocsClient() {
                         ⚡
                     </div>
                     <div>
-                        <h2 style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: 0, letterSpacing: "-0.02em" }}>AutoQA AI</h2>
+                        <h2 style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: 0, letterSpacing: "-0.02em" }}>Auto-QA AI</h2>
                         <span style={{ fontSize: 11, color: C.subtle, fontWeight: 500 }}>Developer Platform</span>
                     </div>
                 </div>

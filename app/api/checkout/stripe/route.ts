@@ -17,7 +17,7 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      mode: 'subscription',
+      mode: 'payment',
       metadata: {
         userId: String(userId || ''),
       },

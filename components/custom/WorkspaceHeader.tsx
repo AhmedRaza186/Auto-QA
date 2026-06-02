@@ -3,13 +3,25 @@
 import { UserButton } from '@clerk/nextjs'
 import Image from 'next/image'
 import Link from 'next/link'
-import React, { useState } from 'react'
+import React, { useContext, useMemo, useState } from 'react'
 import { C } from '@/app/lib/theme'
+import { UserContext } from '@/context/userContext'
+import BillingDialog from './BillingDialog'
 
 const NAV_LINKS = ['Workspace', 'Pricing', 'Docs']
 
 const WorkspaceHeader = () => {
   const [hovered, setHovered] = useState<string | null>(null)
+  const { userDetail } = useContext(UserContext)
+
+  const creditsText = useMemo(() => {
+    if (userDetail?.credits === null || userDetail?.credits === undefined) return '—'
+    try {
+      return Number(userDetail.credits).toLocaleString()
+    } catch {
+      return String(userDetail.credits)
+    }
+  }, [userDetail?.credits])
 
   return (
     <header
@@ -71,6 +83,26 @@ const WorkspaceHeader = () => {
 
         {/* User */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 10,
+              padding: '6px 10px',
+            }}
+          >
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12.5, color: C.muted, fontWeight: 600 }}>
+              Credits
+            </span>
+            <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 13.5, color: C.primary, fontWeight: 800 }}>
+              {creditsText}
+            </span>
+          </div>
+
+          <BillingDialog triggerText="Buy credits" />
           <UserButton
             appearance={{
               elements: {

@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useRef, ReactNode, FC, useContext } from "react";
-import {C} from './lib/theme'
+import { C } from './lib/theme'
 import { UserContext } from "@/context/userContext";
 
 // ─── Hooks ────────────────────────────────────────────────────────
@@ -360,7 +360,7 @@ const AutoTestLanding: FC = () => {
   const [featRef, featIn] = useInView(0.1);
   const [stepsRef, stepsIn] = useInView(0.1);
   const [statsRef, statsIn] = useInView(0.3);
-    const { userDetail, setUserDetail } = useContext(UserContext);
+  const { userDetail, setUserDetail } = useContext(UserContext);
   console.log(userDetail)
   const scrolled = scrollY > 30;
 
@@ -425,9 +425,14 @@ const AutoTestLanding: FC = () => {
             {/* CTA */}
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <Link href={'/workspace'}>
-                <button style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, color: C.muted, background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px" }}>Sign in</button>
-                <MagicButton>{userDetail ? `Go to Workspace` : `Connect GitHub →`}</MagicButton>
+                {userDetail ? (<button style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, color: C.muted, background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px" }}>Sign in</button>) : <></>}
+                {userDetail ? (
+                  <MagicButton>Go to Workspace</MagicButton>
+                ) : (
+                  <MagicButton>Connect GitHub →</MagicButton>
+                )}
               </Link>
+              {userDetail? (<h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, color: C.muted }}>{userDetail.name}</h3>) : <></>}
             </div>
           </div>
         </header>
@@ -467,7 +472,7 @@ const AutoTestLanding: FC = () => {
               maxWidth: 560, margin: "0 auto 2.5rem",
               ...anim(heroIn, 0.2),
             }}>
-             Connect your GitHub repository, let AI generate comprehensive Playwright test suites, execute them automatically, and get detailed reports with actionable insights.
+              Connect your GitHub repository, let AI generate comprehensive Playwright test suites, execute them automatically, and get detailed reports with actionable insights.
             </p>
 
             {/* CTAs */}
