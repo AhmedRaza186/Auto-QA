@@ -8,28 +8,46 @@ const ai = new GoogleGenAI({
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const prompt = `
-You are a QA engineer.
+ const isPassed = body.status === "passed" || !body.error;
 
-Analyze these Playwright logs.
+const prompt = `
+# SYSTEM ROLE
+You are an expert QA Automation Engineer. Your task is to analyze E2E test logs and translate them into a clear, beautiful, and highly actionable summary report for developers.
 
-Status:
-${body.status}
+# INCIDENT DATA
+- **Execution Status:** ${body.status}
+- **Primary Error Message:** ${body.error || "None"}
 
-Error:
-${body.error || "None"}
-
-Logs:
+## RAW PLAYWRIGHT LOGS
+\`\`\`text
 ${body.logs.join("\n")}
+\`\`\`
 
-Return:
+# OUTPUT REQUIREMENTS
+Generate a clean breakdown using the exact Markdown format below based on the execution status. Use simple, human-friendly language and keep it straight to the point.
 
-1. Simple Summary
-2. Root Cause
-3. What Failed
-4. Suggested Fix
+${isPassed ? `
+### ✨ Run Summary
+[Provide a clear, 1-2 sentence high-level overview celebrating the successful run, specifying which flows or main routes were validated successfully.]
 
-Write in simple human language.
+### 🚀 What Succeeded
+[Bullet points highlighting the major checkpoints passed, key assertions validated, and any notable execution performance observations from the logs.]
+
+### 💡 Optimization Insights (Optional)
+[Provide any proactive tips for keeping this test efficient, such as avoiding unnecessary wait times, optimizing hooks, or maintaining selector stability.]
+` : `
+### 📝 Summary
+[Provide a clear, 1-2 sentence high-level overview of what the test was trying to accomplish and its final status.]
+
+### 🔍 Root Cause
+[Identify exactly *why* this failure happened based on the logs (e.g., a network timeout, a missing environment variable, a flaky selector, or an actual application bug).]
+
+### ❌ What Failed
+[Bullet points specifying the precise line of code, assertion, or element locator where the execution stopped dead.]
+
+### 💡 Suggested Fix
+[Provide concrete, step-by-step instructions or a clean code snippet showing how the developer can resolve this specific issue in their Playwright configuration or test file.]
+`}
 `;
 
   const result = await ai.models.generateContent({

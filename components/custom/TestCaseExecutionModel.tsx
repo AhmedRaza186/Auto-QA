@@ -90,6 +90,52 @@ function StatusBadge({ status, isRunning }: { status: RunResult["status"]; isRun
   );
 }
 
+function renderLogLine(log: string, key: number) {
+  const style: React.CSSProperties = { lineHeight: 1.6, whiteSpace: "pre-wrap" };
+
+  if (log.startsWith("[SYSTEM ERROR]")) {
+    return (
+      <div key={key} style={style}>
+        <span style={{ color: "#f87171", fontWeight: 700 }}>{log}</span>
+      </div>
+    );
+  }
+  if (log.startsWith("[SYSTEM]")) {
+    return (
+      <div key={key} style={style}>
+        <span style={{ color: "#60a5fa" }}>{log}</span>
+      </div>
+    );
+  }
+  if (log.startsWith("[BROWSER]")) {
+    return (
+      <div key={key} style={style}>
+        <span style={{ color: "#c084fc" }}>{log}</span>
+      </div>
+    );
+  }
+  if (log.startsWith("[ERROR]")) {
+    return (
+      <div key={key} style={style}>
+        <span style={{ color: "#f87171" }}>{log}</span>
+      </div>
+    );
+  }
+  if (log.startsWith("[WARN]")) {
+    return (
+      <div key={key} style={style}>
+        <span style={{ color: "#fbbf24" }}>{log}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div key={key} style={style}>
+      <span style={{ color: "#a3e635" }}>{log}</span>
+    </div>
+  );
+}
+
 export default function TestExecutionModal({ testCases, isOpen, onClose, repository }: Props) {
   const [baseUrl, setBaseUrl] = useState(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}`);
   const [backendUrl, setBackendUrl] = useState("");
@@ -246,20 +292,34 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
           if (contentType && contentType.includes("application/json")) {
             const data = await response.json();
             if (data.credits !== undefined) setUserDetail((prev: any) => ({ ...prev, credits: data.credits }));
-            setResults((prev) => ({
-              ...prev,
-              [tcId]: {
-                testCaseId: tcId,
-                status: data.status,
-                reason: data.reason || (data.status === "passed" ? "The test completed without runtime errors." : "The test failed during execution. See logs for details."),
-                logs: [...(prev[tcId]?.logs || []), ...(data.logs || [])],
-                playwrightScript: data.playwrightScript,
-                humanReadable: undefined,
-                sessionId: data.sessionId,
-                sessionUrl: data.sessionUrl,
-                error: data.error,
-              },
-            }));
+            setResults((prev) => {
+              const previous = prev[tcId];
+              const serverLogs = Array.isArray(data.logs) ? data.logs : [];
+              const finalLogs =
+                serverLogs.length > 0
+                  ? serverLogs
+                  : (previous?.logs?.length ? previous.logs : serverLogs);
+
+              return {
+                ...prev,
+                [tcId]: {
+                  ...previous,
+                  testCaseId: tcId,
+                  status: data.status,
+                  reason:
+                    data.reason ||
+                    (data.status === "passed"
+                      ? "The test completed without runtime errors."
+                      : "The test failed during execution. See logs for details."),
+                  logs: finalLogs,
+                  playwrightScript: data.playwrightScript ?? previous?.playwrightScript,
+                  humanReadable: undefined,
+                  sessionId: data.sessionId ?? previous?.sessionId,
+                  sessionUrl: data.sessionUrl ?? previous?.sessionUrl,
+                  error: data.error,
+                },
+              };
+            });
           } else {
             // Read log chunks as stream
             const reader = response.body?.getReader();
@@ -295,20 +355,32 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
                     });
                   } else if (parsed.type === "result") {
                     if (parsed.credits !== undefined) setUserDetail((prev: any) => ({ ...prev, credits: parsed.credits }));
-                    setResults((prev) => ({
-                      ...prev,
-                      [tcId]: {
-                        testCaseId: tcId,
-                        status: parsed.status,
-                        reason: parsed.status === "passed" ? "The test completed without runtime errors." : "The test failed during execution. See logs for details.",
-                        logs: parsed.logs,
-                        playwrightScript: parsed.playwrightScript,
-                        humanReadable: undefined,
-                        sessionId: parsed.sessionId,
-                        sessionUrl: parsed.sessionUrl,
-                        error: parsed.error,
-                      },
-                    }));
+                    setResults((prev) => {
+                      const previous = prev[tcId];
+                      const serverLogs = Array.isArray(parsed.logs) ? parsed.logs : [];
+                      // Keep streamed logs if the final payload has none (avoids empty UI on pass)
+                      const finalLogs =
+                        serverLogs.length > 0 ? serverLogs : (previous?.logs?.length ? previous.logs : serverLogs);
+
+                      return {
+                        ...prev,
+                        [tcId]: {
+                          ...previous,
+                          testCaseId: tcId,
+                          status: parsed.status,
+                          reason:
+                            parsed.status === "passed"
+                              ? "The test completed without runtime errors."
+                              : "The test failed during execution. See logs for details.",
+                          logs: finalLogs,
+                          playwrightScript: parsed.playwrightScript ?? previous?.playwrightScript,
+                          humanReadable: undefined,
+                          sessionId: parsed.sessionId ?? previous?.sessionId,
+                          sessionUrl: parsed.sessionUrl ?? previous?.sessionUrl,
+                          error: parsed.error,
+                        },
+                      };
+                    });
                   }
                 } catch (e) {
                   console.error("Failed to parse stream line:", line, e);
@@ -369,7 +441,7 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
   const stopExecution = () => { setIsExecuting(false); setCurrentIdx(-1); };
 
   const currentSelectedResult = selectedDetailId ? results[selectedDetailId] : null;
-  const currentSelectedTestCase = testCases.find((tc) => tc.id === selectedDetailId);
+  let currentSelectedTestCase = testCases.find((tc) => tc.id === selectedDetailId) ?? 0 as any;
 
   // ── Shared style helpers ──
   const monoLabel: React.CSSProperties = {
@@ -738,26 +810,11 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
                       overflowY: "auto", display: "flex", flexDirection: "column", gap: 4,
                       userSelect: "text",
                     }}>
-                      {currentSelectedResult?.logs
-                        ?.filter((log) =>
-                          log.startsWith("[SYSTEM]") ||
-                          log.startsWith("[SYSTEM ERROR]") ||
-                          log.startsWith("[BROWSER]") ||
-                          log.startsWith("[ERROR]")
-                        )
-                        .map((log, lIdx) => (
-                          <div key={lIdx} style={{ lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                            {log.startsWith("[SYSTEM]") ? (
-                              <span style={{ color: "#60a5fa" }}>{log}</span>
-                            ) : log.startsWith("[SYSTEM ERROR]") ? (
-                              <span style={{ color: "#f87171", fontWeight: 700 }}>{log}</span>
-                            ) : log.startsWith("[BROWSER]") ? (
-                              <span style={{ color: "#c084fc" }}>{log}</span>
-                            ) : log.startsWith("[ERROR]") ? (
-                              <span style={{ color: "#f87171" }}>{log}</span>
-                            ) : null}
-                          </div>
-                        ))}
+                      {currentSelectedResult?.logs && currentSelectedResult.logs.length > 0 ? (
+                        currentSelectedResult.logs.map((log, lIdx) => renderLogLine(log, lIdx))
+                      ) : (
+                        <span style={{ color: C.subtle, fontStyle: "italic" }}>No console output yet.</span>
+                      )}
                       {currentSelectedResult?.error && (
                         <div style={{
                           color: "#f87171", fontWeight: 700,
@@ -776,7 +833,7 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
                    !currentSelectedResult?.humanReadable && (
                     <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
                       <button
-                        onClick={() => analyzeLogs(currentSelectedTestCase.id)}
+                        onClick={() => analyzeLogs(currentSelectedTestCase?.id)}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -920,7 +977,10 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
           display: "flex", justifyContent: "flex-end", flexShrink: 0,
         }}>
           <button
-            onClick={onClose}
+            onClick={() =>{
+             currentSelectedTestCase = null;
+              onClose()
+            }}
             disabled={isExecuting}
             style={{
               display: "flex", alignItems: "center", gap: 7,
