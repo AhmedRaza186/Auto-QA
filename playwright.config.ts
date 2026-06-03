@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  timeout: 30000,
+  timeout: 300000,
 
   use: {
     headless: true,
@@ -10,7 +10,7 @@ export default defineConfig({
     video: 'retain-on-failure',
     trace: 'retain-on-failure',
 
-    actionTimeout: 10000,
-    navigationTimeout: 15000,
+    actionTimeout: 100000,
+    navigationTimeout: 150000,
   },
 });

@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { C } from "../../app/lib/theme";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 
 // ─── Expanded Rich Documentation Data ─────────────────────────────
 const SECTIONS = [
@@ -89,6 +92,8 @@ const SECTIONS = [
 ];
 
 export default function DocsClient() {
+    const router = useRouter();
+
     const [activeSection, setActiveSection] = useState("Introduction");
     // Default selection points to the first item of the starting section
     const [activeItemName, setActiveItemName] = useState(SECTIONS[0].items[0].name);
@@ -107,8 +112,11 @@ export default function DocsClient() {
     return (
         <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", minHeight: "100vh", background: C.bg, color: C.ink, fontFamily: "'Geist', sans-serif" }}>
 
+
+
             {/* ── SIDEBAR ── */}
             <aside style={{ borderRight: `1px solid ${C.border}`, padding: "2.5rem 1.5rem", background: C.surface, display: "flex", flexDirection: "column", gap: "2rem" }}>
+
 
                 {/* Brand Header */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -116,7 +124,10 @@ export default function DocsClient() {
                         ⚡
                     </div>
                     <div>
-                        <h2 style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: 0, letterSpacing: "-0.02em" }}>Auto-QA AI</h2>
+                        <Link href={'/'}>
+                            <h2 style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: 0, letterSpacing: "-0.02em" }}>
+                                Auto-QA AI</h2>
+                        </Link>
                         <span style={{ fontSize: 11, color: C.subtle, fontWeight: 500 }}>Developer Platform</span>
                     </div>
                 </div>
@@ -156,6 +167,27 @@ export default function DocsClient() {
                         );
                     })}
                 </nav>
+                <button
+                    onClick={() => router.back()}
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        width: '30%',
+                        padding: "10px 10px",
+                        borderRadius: 10,
+                        border: `1px solid ${C.border}`,
+                        background: C.surfaceAlt,
+                        color: C.ink,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        transition: "all .2s ease",
+                        
+                    }}
+                >
+                    ← Back
+                </button>
             </aside>
 
             {/* ── MAIN CONTENT WORKSPACE ── */}

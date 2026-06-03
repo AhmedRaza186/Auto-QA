@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState, useEffect, useRef, ReactNode, FC, useContext } from "react";
 import { C } from './lib/theme'
 import { UserContext } from "@/context/userContext";
+import { UserButton } from "@clerk/nextjs";
+import Header from "@/components/custom/LandingPageHeader";
 
 // ─── Hooks ────────────────────────────────────────────────────────
 function useInView(threshold = 0.12): [React.RefObject<HTMLDivElement>, boolean] {
@@ -232,7 +234,7 @@ const PIPELINE: { icon: string; label: string; sub: string }[] = [
 const PipelineViz: FC = () => {
   const [ref, inView] = useInView(0.2);
   return (
-    <div ref={ref} style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto", paddingBottom: 8 }}>
+    <div ref={ref} style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto", paddingBottom: 8, scrollbarColor:'transparent transparent' }}>
       {PIPELINE.map((p, i) => (
         <div key={p.label} style={{ display: "flex", alignItems: "center", flex: i < PIPELINE.length - 1 ? "1 0 auto" : "0 0 auto" }}>
           <div style={{
@@ -381,61 +383,13 @@ const AutoTestLanding: FC = () => {
         @keyframes float      { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::selection { background: ${C.primaryMid}; color: ${C.primaryDark}; }
-        html { scroll-behavior: smooth; }
+
       `}</style>
 
       <div style={{ fontFamily: "'Geist', sans-serif", background: C.bg, color: C.ink, minHeight: "100vh" }}>
 
         {/* ── NAV ── */}
-        <header style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-          background: scrolled ? "transparent" : "transparent",
-          backdropFilter: scrolled ? "blur(18px) saturate(180%)" : "none",
-          borderBottom: scrolled ? `1px solid ${C.border}` : "none",
-          transition: "all 0.4s ease",
-        }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2rem" }}>
-            {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              {/* <div style={{
-                width: 32, height: 32, borderRadius: 9,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 16, boxShadow: `0 4px 12px ${C.primary}44`,
-              }} /> */}
-              {/* Logo */}
-              <Image src={"/logo-white.svg"} alt="logo" width={100} height={100} />
-              <span style={{
-                fontFamily: "'Geist Mono', monospace", fontSize: 10, fontWeight: 500,
-                color: C.primary, background: C.primaryBg, border: `1px solid ${C.primaryMid}`,
-                borderRadius: 6, padding: "2px 7px", letterSpacing: "0.04em",
-              }}>AI</span>
-            </div>
-
-            {/* Nav links */}
-            <nav style={{ display: "flex", gap: 2 }}>
-              {(["Features", "How it works", "Docs"] as string[]).map(l => (
-                <a key={l} href={l === "Docs" ? "/docs" : `#${l.toLowerCase().replace(/\s+/g, "-")}`}
-                  style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.muted, textDecoration: "none", padding: "6px 14px", borderRadius: 8, transition: "color 0.2s, background 0.2s" }}
-                  onMouseEnter={e => { (e.target as HTMLElement).style.color = C.ink; (e.target as HTMLElement).style.background = C.primaryBg; }}
-                  onMouseLeave={e => { (e.target as HTMLElement).style.color = C.muted; (e.target as HTMLElement).style.background = "transparent"; }}
-                >{l}</a>
-              ))}
-            </nav>
-
-            {/* CTA */}
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <Link href={'/workspace'}>
-                {userDetail ? (<button style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, color: C.muted, background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px" }}>Sign in</button>) : <></>}
-                {userDetail ? (
-                  <MagicButton>Go to Workspace</MagicButton>
-                ) : (
-                  <MagicButton>Connect GitHub →</MagicButton>
-                )}
-              </Link>
-              {userDetail? (<h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, color: C.muted }}>{userDetail.name}</h3>) : <></>}
-            </div>
-          </div>
-        </header>
+    <Header scrolled={scrolled} userDetail={userDetail} MagicButton={MagicButton} UserButton={UserButton} />
 
         {/* ── HERO ── */}
         <section ref={heroRef} style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "7rem 2rem 4rem", position: "relative", overflow: "hidden" }}>

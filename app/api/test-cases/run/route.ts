@@ -199,18 +199,18 @@ Rules for your code:
 1. DO NOT import playwright, browserbase, assert, or any other modules.
 2. Navigate to the target route using: 
    \`await page.goto('${targetUrl}', { waitUntil: 'load', timeout: 15000 })\`
-   followed by a short settle wait: \`await page.waitForTimeout(1000)\`.
+   followed by a short settle wait: \`await page.waitForTimeout(10000)\`.
 3. Carefully analyze the Source File Context provided to find the EXACT forms, inputs, placeholders, buttons, and elements. Look for:
    - Input names, placeholder texts, or labels (e.g. \`page.getByPlaceholder('Enter your name')\` or \`page.locator('input[name="email"]')\`).
    - Button texts (e.g. \`page.getByRole('button', { name: /submit/i })\` or \`page.locator('button:has-text("Submit")')\`).
 4. Apply extreme selector resilience:
    - If a specific selector or locator might fail, use flexible text-matching locators or check multiple variations.
-   - ALWAYS wait for an element to be visible before interacting with it: \`await page.waitForSelector('selector-or-text', { state: 'visible', timeout: 4000 }).catch(() => {})\`.
+   - ALWAYS wait for an element to be visible before interacting with it: \`await page.waitForSelector('selector-or-text', { state: 'visible', timeout: 40000 }).catch(() => {})\`.
    - Scroll elements into view before interaction to prevent out-of-bounds clicks: \`await locator.scrollIntoViewIfNeeded().catch(() => {})\`.
    - If standard click fails or throws a timeout, try forcing it or using DOM-based dispatch click as a safe backup:
-     \`await locator.click({ force: true, timeout: 2000 }).catch(async () => { await locator.evaluate(node => node.click()).catch(() => {}) })\`
+     \`await locator.click({ force: true, timeout: 20000 }).catch(async () => { await locator.evaluate(node => node.click()).catch(() => {}) })\`
 5. Introduce generous settling times:
-   - Add \`await page.waitForTimeout(1000)\` after major actions (clicks, inputs, typing, form submissions) to allow React, Next.js, or server state updates to propagate and elements to render.
+   - Add \`await page.waitForTimeout(10000)\` after major actions (clicks, inputs, typing, form submissions) to allow React, Next.js, or server state updates to propagate and elements to render.
 6. Use lenient, substring-based assertions:
    - Do NOT use strict case-sensitive equality matches on text contents.
    - Instead, search for presence or substring content in a relaxed, case-insensitive way. E.g.:

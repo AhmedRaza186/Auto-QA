@@ -47,7 +47,7 @@ const WorkspaceHeader = () => {
       >
         {/* Logo */}
         <Link href="/">
-          <Image src="/logo-white.svg" alt="AutoTest AI" width={110} height={36} style={{ cursor: 'pointer' }} />
+          <Image src="/logo-white.svg" alt="Auto-QA AI" width={110} height={36} style={{ cursor: 'pointer' }} />
         </Link>
 
         {/* Nav */}
@@ -83,7 +83,7 @@ const WorkspaceHeader = () => {
 
         {/* User */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
+          {/* <div
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -100,7 +100,7 @@ const WorkspaceHeader = () => {
             <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 13.5, color: C.primary, fontWeight: 800 }}>
               {creditsText}
             </span>
-          </div>
+          </div> */}
 
           <BillingDialog triggerText="Buy credits" />
           <UserButton
