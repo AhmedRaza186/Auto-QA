@@ -62,7 +62,7 @@ const RepoDialog = ({
   const saveRepo = async (repo: Repo) => {
     if (!repo) return
     setSaving(true)
-    const result = await axios.post('/api/github/user-repo', {
+    await axios.post('/api/github/user-repo', {
       repoId: repo.id,
       userId: userDetail?.id,
       repoName: repo.name,
@@ -74,7 +74,6 @@ const RepoDialog = ({
       html_url: repo.html_url,
       default_branch: repo.default_branch,
     })
-    console.log(result.data)
     setRefreshPage(true)
     setSaving(false)
   }

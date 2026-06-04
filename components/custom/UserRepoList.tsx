@@ -92,9 +92,7 @@ const UserRepoList = ({ repoList, setReload }: Props) => {
         repo: repo.name,
         branch: repo.default_branch,
       })
-      console.log(res.data, 'res.data')
     } catch (error) {
-      console.log(error)
     } finally {
       setLoading(false)
     }
@@ -112,7 +110,6 @@ const UserRepoList = ({ repoList, setReload }: Props) => {
       setStatusData({ totalTests: res.data.length, passedTests, failedTests, passRate })
       setTestCases(res.data)
     } catch (error) {
-      console.log(error)
     } finally {
       setTestCaseloading(false)
     }

@@ -456,8 +456,6 @@ Only use fields actually found in:
                         credits: newCredits,
                     });
                 } catch (execError: any) {
-                    console.error("Script execution error:", execError);
-
                     const msgFail = `[SYSTEM ERROR] Script execution failed: ${execError.message || String(execError)}`;
                     logs.push(msgFail);
                     sendStream({ type: "log", message: msgFail });
@@ -521,7 +519,6 @@ Only use fields actually found in:
             },
         });
     } catch (error: any) {
-        console.error("API endpoint error:", error);
         return NextResponse.json(
             {
                 success: false,

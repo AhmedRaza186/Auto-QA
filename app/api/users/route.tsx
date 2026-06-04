@@ -40,7 +40,6 @@ export async function POST() {
 
     return NextResponse.json({ error: "Failed to create or fetch user" }, { status: 500 });
   } catch (err) {
-    console.error(err);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

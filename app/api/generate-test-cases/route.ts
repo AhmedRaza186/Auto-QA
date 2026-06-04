@@ -371,8 +371,6 @@ Important rules:
             credits: newCredits,
         });
     } catch (error: any) {
-        console.error("Generate test cases error:", error);
-
         return NextResponse.json(
             {
                 success: false,

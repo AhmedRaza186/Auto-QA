@@ -383,7 +383,6 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
                     });
                   }
                 } catch (e) {
-                  console.error("Failed to parse stream line:", line, e);
                 }
               }
             }
@@ -398,7 +397,6 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
           if (responseStatusIsClientError(err) || lowerMsg.includes("credits") || lowerMsg.includes("credit") || lowerMsg.includes("not found")) {
             break;
           }
-          console.warn(`Execution attempt ${attempt + 1} failed: ${err.message}. Retrying...`);
         }
       }
 

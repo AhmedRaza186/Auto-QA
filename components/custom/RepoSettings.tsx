@@ -30,13 +30,11 @@ const RepoSettings = ({ repo, setReload }: props) => {
   })
 
   const handleSaveSettings = async () => {
-    console.log('Saved Settings:', repoSettings)
     const result = await axios.post('/api/github/user-repo/settings', {
       repoId: repo.repoId,
       targetDomain: repoSettings.targetDomain,
       globalInstruction: repoSettings.globalInstruction,
     })
-    console.log(result?.data)
     setIsOpen(false)
     setReload()
   }

@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(result[0]);
     } catch (error) {
-        console.error(error);
 
         return NextResponse.json(
             { error: "Internal Server Error" },
@@ -74,6 +73,5 @@ export async function GET(req:NextRequest){
     }
     
     const result = await db.select().from(repositories).where(eq(repositories.userId, userId))
-    console.log(result)
     return NextResponse.json(result)
 }

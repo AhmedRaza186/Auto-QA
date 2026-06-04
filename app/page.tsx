@@ -161,7 +161,7 @@ const MagicButton: FC<MagicButtonProps> = ({ children, primary = true, onClick, 
 
 // ─── Terminal Animation ────────────────────────────────────────────
 const TERM_LINES: { delay: number; color: string; text: string }[] = [
-  { delay: 0, color: "#9aaa8c", text: "$ autotest connect --repo github.com/acme/checkout-app" },
+  { delay: 0, color: "#9aaa8c", text: "$  connect --repo github.com/acme/checkout-app" },
   { delay: 700, color: C.primary, text: "✦ Cloning repository..." },
   { delay: 1400, color: C.inkMid, text: "  → 3 routes detected  ·  42 components mapped" },
   { delay: 2100, color: C.primary, text: "✦ Generating test cases with AI..." },
@@ -200,7 +200,7 @@ const TerminalMockup: FC = () => {
           <span key={c} style={{ width: 12, height: 12, borderRadius: "50%", background: c, display: "inline-block" }} />
         ))}
         <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: "#6b7a5e", marginLeft: 8 }}>
-          autotest — zsh
+           — zsh
         </span>
       </div>
       {/* Lines */}
@@ -312,7 +312,7 @@ const FEATURES: Feature[] = [
 // ─── Steps Data ───────────────────────────────────────────────────
 interface Step { n: string; icon: string; title: string; desc: string }
 const STEPS: Step[] = [
-  { n: "01", icon: "⬡", title: "Connect your GitHub repo", desc: "Authorize GitHub and select a repository. AutoTest reads your branch, pulls the code, and begins mapping your application structure." },
+  { n: "01", icon: "⬡", title: "Connect your GitHub repo", desc: "Authorize GitHub and select a repository. AutoQA reads your branch, pulls the code, and begins mapping your application structure." },
   { n: "02", icon: "✦", title: "AI generates test cases", desc: "Our model analyzes routes, components, and user flows. It outputs a full test suite — E2E journeys, edge cases, and regression checks." },
   { n: "03", icon: "☁", title: "Playwright runs the tests", desc: "Tests execute in real browsers on Playwright's cloud grid. Parallel runs, multiple viewports, full session recordings included." },
   { n: "04", icon: "✓", title: "Review results & iterate", desc: "Get a structured report with pass/fail status, video replays, diffs, and AI-generated fix suggestions. Ship with confidence." },
@@ -356,14 +356,13 @@ const Orbs: FC = () => (
 // ═══════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════
-const AutoTestLanding: FC = () => {
+const AutoQALanding: FC = () => {
   const scrollY = useScrollY();
   const [heroRef, heroIn] = useInView(0.05);
   const [featRef, featIn] = useInView(0.1);
   const [stepsRef, stepsIn] = useInView(0.1);
   const [statsRef, statsIn] = useInView(0.3);
   const { userDetail, setUserDetail } = useContext(UserContext);
-  console.log(userDetail)
   const scrolled = scrollY > 30;
 
   const anim = (inView: boolean, delay = 0, from = "translateY(20px)"): React.CSSProperties => ({
@@ -682,7 +681,7 @@ const AutoTestLanding: FC = () => {
           <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${C.primaryDark}, ${C.primary})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>⚡</div>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>AutoTest AI</span>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>AutoQA AI</span>
             </div>
             <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.subtle }}>
               © {new Date().getFullYear()} AutoQA - AI. All rights reserved.
@@ -702,4 +701,4 @@ const AutoTestLanding: FC = () => {
   );
 };
 
-export default AutoTestLanding;
+export default AutoQALanding;

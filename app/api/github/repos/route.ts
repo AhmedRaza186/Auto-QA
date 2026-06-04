@@ -37,7 +37,6 @@ export async function GET(){
             owner:repo.owner?.login
         })))
     } catch (error: any) {
-        console.error("API route error:", error?.response?.data || error.message);
         const status = error?.response?.status || 500;
         const response = NextResponse.json({error: "Failed to fetch repositories"}, { status });
         

@@ -36,11 +36,10 @@ const TestCaseSettingDialog = ({ testCase, setReload }: props) => {
   }
 
   const updateTestCase = async () => {
-    const result = await axios.post('/api/test-cases/settings', {
+    await axios.post('/api/test-cases/settings', {
       ...formTestCase,
       testCaseId: testCase?.id,
     })
-    console.log(result?.data)
     setReload()
   }
 
