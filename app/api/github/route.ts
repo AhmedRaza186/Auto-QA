@@ -24,9 +24,12 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     const origin = new URL(req.url).origin;
-    console.log(origin);
+    console.log(`GitHub OAuth initiation origin: ${origin}`);
     
-    const redirectUri = process.env.REDIRECT_URI || `${origin}/api/github/callback`;
+    // Dynamically derive the redirect URI based on the request origin to support
+    // localhost, local network IP sharing, and production Vercel domain automatically.
+    const redirectUri = `${origin}/api/github/callback`;
+    console.log(`Setting OAuth redirect_uri: ${redirectUri}`);
 
     const params = new URLSearchParams({
         client_id: process.env.CLIENT_ID!,

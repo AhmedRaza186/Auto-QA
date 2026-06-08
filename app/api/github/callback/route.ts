@@ -30,11 +30,15 @@ export async function GET(req: NextRequest) {
         return addCorsHeaders(NextResponse.redirect(new URL('/workspace?error=code not found', req.url)), origin)
     }
 
-    // Fix: pass data as the second argument, config as the third
+    const requestOrigin = new URL(req.url).origin;
+    const redirectUri = `${requestOrigin}/api/github/callback`;
+
+    // Fix: pass data as the second argument, config as the third, including the matching redirect_uri
     const res = await axios.post('https://github.com/login/oauth/access_token', {
         client_id: process.env.CLIENT_ID!,
         client_secret: process.env.CLIENT_SECRET!,
-        code
+        code,
+        redirect_uri: redirectUri
     }, {
         headers: {
             Accept: 'application/json'
