@@ -12,7 +12,7 @@ import { C } from '@/app/lib/theme'
 import { Zap, GitBranch } from 'lucide-react'
 
 const WorkspaceMain = () => {
-  const { userDetail } = useContext(UserContext)
+  const { userDetail, setUserDetail } = useContext(UserContext)
   const router = useRouter()
   const searchParams = useSearchParams()
   const [token, setToken] = useState('')
@@ -27,6 +27,32 @@ const WorkspaceMain = () => {
       getAddedRepos()
     }
   }, [userDetail])
+
+  // Poll for credit update after a successful checkout payment
+  useEffect(() => {
+    if (searchParams.get('success') === 'true' && setUserDetail) {
+      const interval = setInterval(async () => {
+        try {
+          const res = await axios.post('/api/users')
+          if (res?.data?.user) {
+            setUserDetail(res.data.user)
+          }
+        } catch (e) {
+          console.error('Error fetching updated user details:', e)
+        }
+      }, 3000)
+
+      // Clean up/stop polling after 18 seconds
+      const timeout = setTimeout(() => {
+        clearInterval(interval)
+      }, 18000)
+
+      return () => {
+        clearInterval(interval)
+        clearTimeout(timeout)
+      }
+    }
+  }, [searchParams, setUserDetail])
 
   const getGithubUserToken = async () => {
     const res = await axios.get('/api/github/token')
