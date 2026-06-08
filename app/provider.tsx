@@ -18,7 +18,6 @@ const Provider = ({
             const res = await axios.post('/api/users')
             setUserDetail(res?.data?.user ?? null)
         } catch (e) {
-            // Not signed in yet, or session still initializing
             setUserDetail(null)
         }
     }

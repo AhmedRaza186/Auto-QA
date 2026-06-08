@@ -31,7 +31,7 @@ export async function POST(req: Request) {
         if (currentUser) {
           await db
             .update(users)
-            .set({ credits: (currentUser.credits || 0) + 1000 })
+            .set({ credits: (currentUser.credits || 0) + 10000 })
             .where(eq(users.id, userId));
         }
       }

@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+    const origin = new URL(req.url).origin;
+    const redirectUri = process.env.REDIRECT_URI || `${origin}/api/github/callback`;
+
     const params = new URLSearchParams({
         client_id: process.env.CLIENT_ID!,
-        redirect_uri: process.env.REDIRECT_URI!,
+        redirect_uri: redirectUri,
         scope: "repo read:user",
     });
 

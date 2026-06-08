@@ -5,7 +5,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name"),
   email: text("email").notNull().unique(),
-  credits: integer('credits').default(1000).notNull(),
+  credits: integer('credits').default(10000).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export const repositories = pgTable('repositories', {

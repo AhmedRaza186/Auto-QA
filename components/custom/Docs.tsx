@@ -50,7 +50,7 @@ const SECTIONS = [
                 name: "Add credits",
                 badge: "Billing",
                 desc: "Manage token usage and test runtime minutes through automated, multi-tiered subscription balances.",
-                details: "Every developer account launches with 500 free credits monthly. Run custom heavy pipelines or upgrade directly via secure Stripe ledger points."
+                details: "Every developer account launches with 10000 free credits monthly. Run custom heavy pipelines or upgrade directly via secure Stripe ledger points."
             },
             {
                 name: "Generate first test case",

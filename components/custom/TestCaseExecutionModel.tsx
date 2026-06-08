@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -136,6 +136,67 @@ function renderLogLine(log: string, key: number) {
   );
 }
 
+/** Prefer the most complete log array — never downgrade to fewer lines after a run finishes. */
+function pickBestLogs(serverLogs: unknown, localLogs: string[]): string[] {
+  const server = Array.isArray(serverLogs) ? (serverLogs as string[]) : [];
+  if (!server.length && !localLogs.length) return [];
+  if (!server.length) return [...localLogs];
+  if (!localLogs.length) return [...server];
+  return server.length >= localLogs.length ? [...server] : [...localLogs];
+}
+
+function applyStreamEvent(
+  tcId: number,
+  parsed: { type: string; message?: string; logs?: string[]; status?: string; error?: string; playwrightScript?: string; sessionId?: string; sessionUrl?: string; credits?: number },
+  accumulatedLogs: string[],
+  setResults: React.Dispatch<React.SetStateAction<Record<number, RunResult>>>,
+  setUserDetail: React.Dispatch<React.SetStateAction<any>>
+): string[] {
+  if (parsed.type === "log" && parsed.message) {
+    accumulatedLogs.push(parsed.message);
+    const snapshot = [...accumulatedLogs];
+    setResults((prev) => ({
+      ...prev,
+      [tcId]: {
+        ...(prev[tcId] || { testCaseId: tcId, status: "running" as const, logs: [] }),
+        logs: snapshot,
+      },
+    }));
+    return snapshot;
+  }
+
+  if (parsed.type === "result") {
+    if (parsed.credits !== undefined) {
+      setUserDetail((prev: any) => ({ ...prev, credits: parsed.credits }));
+    }
+    const finalLogs = pickBestLogs(parsed.logs, accumulatedLogs);
+    setResults((prev) => {
+      const previous = prev[tcId];
+      return {
+        ...prev,
+        [tcId]: {
+          ...previous,
+          testCaseId: tcId,
+          status: (parsed.status as RunResult["status"]) || previous?.status || "failed",
+          reason:
+            parsed.status === "passed"
+              ? "The test completed without runtime errors."
+              : "The test failed during execution. See logs for details.",
+          logs: finalLogs,
+          playwrightScript: parsed.playwrightScript ?? previous?.playwrightScript,
+          humanReadable: undefined,
+          sessionId: parsed.sessionId ?? previous?.sessionId,
+          sessionUrl: parsed.sessionUrl ?? previous?.sessionUrl,
+          error: parsed.error,
+        },
+      };
+    });
+    return finalLogs;
+  }
+
+  return accumulatedLogs;
+}
+
 export default function TestExecutionModal({ testCases, isOpen, onClose, repository }: Props) {
   const [baseUrl, setBaseUrl] = useState(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}`);
   const [backendUrl, setBackendUrl] = useState("");
@@ -147,6 +208,11 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
   const [executionMode, setExecutionMode] = useState<"cache" | "generate">("cache");
   const [customPrompt, setCustomPrompt] = useState("");
   const [showOptions, setShowOptions] = useState(false);
+  const isExecutingRef = useRef(false);
+
+  useEffect(() => {
+    isExecutingRef.current = isExecuting;
+  }, [isExecuting]);
 
   const analyzeLogs = async (testCaseId: number) => {
     const current = results[testCaseId];
@@ -190,30 +256,31 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
   };
 
   useEffect(() => {
-    if (isOpen && testCases.length > 0) {
-      const initial: Record<number, RunResult> = {};
-      testCases.forEach((tc) => {
-        const tcStatus = (tc as any).status;
-        const tcLogs = (tc as any).logs;
-        const hasPreviousLogs = Array.isArray(tcLogs) && tcLogs.length > 0;
-        initial[tc.id] = {
-          testCaseId: tc.id,
-          status: tcStatus === "passed" || tcStatus === "failed" ? tcStatus : "idle",
-          logs: hasPreviousLogs ? tcLogs : ["Waiting to run..."],
-          playwrightScript: tc.playwrightScript || undefined,
-          sessionId: (tc as any).sessionId || (tc as any).session_id || undefined,
-          sessionUrl: (tc as any).sessionUrl || (tc as any).session_url || undefined,
-        };
-      });
-      setResults(initial);
-      setSelectedDetailId(testCases[0].id);
-      setCurrentIdx(-1);
-      setIsExecuting(false);
-      setCustomPrompt("");
-      setBaseUrl(repository?.targetDomain || repository?.websiteUrl || "http://localhost:3000");
-      const hasMissingScript = testCases.some((tc) => !tc.playwrightScript);
-      setExecutionMode(hasMissingScript ? "generate" : "cache");
-    }
+    // Only initialize when the modal opens — never wipe in-flight terminal output mid-run
+    if (!isOpen || testCases.length === 0 || isExecutingRef.current) return;
+
+    const initial: Record<number, RunResult> = {};
+    testCases.forEach((tc) => {
+      const tcStatus = (tc as any).status;
+      const tcLogs = (tc as any).logs;
+      const hasPreviousLogs = Array.isArray(tcLogs) && tcLogs.length > 0;
+      initial[tc.id] = {
+        testCaseId: tc.id,
+        status: tcStatus === "passed" || tcStatus === "failed" ? tcStatus : "idle",
+        logs: hasPreviousLogs ? tcLogs : ["Waiting to run..."],
+        playwrightScript: tc.playwrightScript || undefined,
+        sessionId: (tc as any).sessionId || (tc as any).session_id || undefined,
+        sessionUrl: (tc as any).sessionUrl || (tc as any).session_url || undefined,
+      };
+    });
+    setResults(initial);
+    setSelectedDetailId(testCases[0].id);
+    setCurrentIdx(-1);
+    setIsExecuting(false);
+    setCustomPrompt("");
+    setBaseUrl(repository?.targetDomain || repository?.websiteUrl || "http://localhost:3000");
+    const hasMissingScript = testCases.some((tc) => !tc.playwrightScript);
+    setExecutionMode(hasMissingScript ? "generate" : "cache");
   }, [isOpen, testCases, repository]);
 
   useEffect(() => {
@@ -226,8 +293,13 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
       const tcId = currentTestCase.id;
       setSelectedDetailId(tcId);
       const isRegenerating = executionMode === "generate" || !results[tcId]?.playwrightScript;
-      
-      // Clear humanReadable, isAnalyzing, error and old logs from previous executions when starting
+      const startMessage = isRegenerating
+        ? "[SYSTEM] Connecting to AI agent to analyze files and generate script..."
+        : "[SYSTEM] Found pre-generated script cached in database, preparing execution...";
+
+      // Local accumulator — source of truth while streaming (React state updates are async)
+      let accumulatedLogs: string[] = [startMessage];
+
       setResults((prev) => ({
         ...prev,
         [tcId]: {
@@ -236,9 +308,7 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
           humanReadable: undefined,
           isAnalyzing: false,
           error: undefined,
-          logs: [isRegenerating
-            ? "[SYSTEM] Connecting to AI agent to analyze files and generate script..."
-            : "[SYSTEM] Found pre-generated script cached in database, preparing execution..."],
+          logs: accumulatedLogs,
         },
       }));
 
@@ -248,17 +318,15 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
 
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         if (attempt > 0) {
-          // Log retry in terminal for the user
-          setResults((prev) => {
-            const currentResult = prev[tcId] || { logs: [] };
-            return {
-              ...prev,
-              [tcId]: {
-                ...currentResult,
-                logs: [...(currentResult.logs || []), `[SYSTEM] API connection failed. Retrying in ${attempt * 1.5}s (Attempt ${attempt} of ${maxRetries})...`],
-              },
-            };
-          });
+          const retryLine = `[SYSTEM] API connection failed. Retrying in ${attempt * 1.5}s (Attempt ${attempt} of ${maxRetries})...`;
+          accumulatedLogs = [...accumulatedLogs, retryLine];
+          setResults((prev) => ({
+            ...prev,
+            [tcId]: {
+              ...(prev[tcId] || { testCaseId: tcId, status: "running" as const }),
+              logs: accumulatedLogs,
+            },
+          }));
           // Wait for backoff
           await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
         }
@@ -292,14 +360,10 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
           if (contentType && contentType.includes("application/json")) {
             const data = await response.json();
             if (data.credits !== undefined) setUserDetail((prev: any) => ({ ...prev, credits: data.credits }));
+            const finalLogs = pickBestLogs(data.logs, accumulatedLogs);
+            accumulatedLogs = finalLogs;
             setResults((prev) => {
               const previous = prev[tcId];
-              const serverLogs = Array.isArray(data.logs) ? data.logs : [];
-              const finalLogs =
-                serverLogs.length > 0
-                  ? serverLogs
-                  : (previous?.logs?.length ? previous.logs : serverLogs);
-
               return {
                 ...prev,
                 [tcId]: {
@@ -330,6 +394,22 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
             const decoder = new TextDecoder();
             let buffer = "";
 
+            const processStreamLine = (line: string) => {
+              if (!line.trim()) return;
+              try {
+                const parsed = JSON.parse(line);
+                accumulatedLogs = applyStreamEvent(
+                  tcId,
+                  parsed,
+                  accumulatedLogs,
+                  setResults,
+                  setUserDetail
+                );
+              } catch (e) {
+                console.error("Failed to parse stream line:", line, e);
+              }
+            };
+
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
@@ -339,52 +419,24 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
               buffer = lines.pop() || "";
 
               for (const line of lines) {
-                if (!line.trim()) continue;
-                try {
-                  const parsed = JSON.parse(line);
-                  if (parsed.type === "log") {
-                    setResults((prev) => {
-                      const currentResult = prev[tcId] || { logs: [] };
-                      return {
-                        ...prev,
-                        [tcId]: {
-                          ...currentResult,
-                          logs: [...(currentResult.logs || []), parsed.message],
-                        },
-                      };
-                    });
-                  } else if (parsed.type === "result") {
-                    if (parsed.credits !== undefined) setUserDetail((prev: any) => ({ ...prev, credits: parsed.credits }));
-                    setResults((prev) => {
-                      const previous = prev[tcId];
-                      const serverLogs = Array.isArray(parsed.logs) ? parsed.logs : [];
-                      // Keep streamed logs if the final payload has none (avoids empty UI on pass)
-                      const finalLogs =
-                        serverLogs.length > 0 ? serverLogs : (previous?.logs?.length ? previous.logs : serverLogs);
-
-                      return {
-                        ...prev,
-                        [tcId]: {
-                          ...previous,
-                          testCaseId: tcId,
-                          status: parsed.status,
-                          reason:
-                            parsed.status === "passed"
-                              ? "The test completed without runtime errors."
-                              : "The test failed during execution. See logs for details.",
-                          logs: finalLogs,
-                          playwrightScript: parsed.playwrightScript ?? previous?.playwrightScript,
-                          humanReadable: undefined,
-                          sessionId: parsed.sessionId ?? previous?.sessionId,
-                          sessionUrl: parsed.sessionUrl ?? previous?.sessionUrl,
-                          error: parsed.error,
-                        },
-                      };
-                    });
-                  }
-                } catch (e) {
-                }
+                processStreamLine(line);
               }
+            }
+
+            // Flush any remaining NDJSON line (last chunk may not end with \n)
+            if (buffer.trim()) {
+              processStreamLine(buffer);
+            }
+
+            // Final safety sync — keep terminal output after the run completes
+            if (accumulatedLogs.length > 0) {
+              setResults((prev) => ({
+                ...prev,
+                [tcId]: {
+                  ...(prev[tcId] || { testCaseId: tcId, status: "running" as const }),
+                  logs: pickBestLogs(accumulatedLogs, prev[tcId]?.logs ?? []),
+                },
+              }));
             }
           }
 
@@ -402,13 +454,15 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
 
       if (!success) {
         const errMsg = lastError?.message || "Execution failed after multiple attempts";
+        const errorLine = `[SYSTEM ERROR] ${errMsg}`;
+        accumulatedLogs = [...accumulatedLogs, errorLine];
         setResults((prev) => ({
           ...prev,
           [tcId]: {
             ...prev[tcId],
             status: "failed",
             error: errMsg,
-            logs: [...(prev[tcId]?.logs || []), `[SYSTEM ERROR] ${errMsg}`],
+            logs: pickBestLogs(accumulatedLogs, prev[tcId]?.logs ?? []),
           },
         }));
       }
@@ -458,7 +512,16 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setIsExecuting(false);
+          setCurrentIdx(-1);
+          onClose();
+        }
+      }}
+    >
       <DialogContent
         style={{
           maxWidth: 1000,

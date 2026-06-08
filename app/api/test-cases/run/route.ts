@@ -4,7 +4,6 @@ import { db } from "@/db";
 import { TestCasesTable, repositories, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-// Import from 'playwright' instead of 'playwright-core' for local launching
 import { chromium } from "playwright";
 
 const ai = new GoogleGenAI({
@@ -149,7 +148,6 @@ export async function POST(req: NextRequest) {
                     .join("\n\n----------------------\n\n");
             }
 
-            // Build global instructions and runtime prompts
             const globalIns = repoRecord?.gloablInstruction
                 ? `\n[GLOBAL PROJECT INSTRUCTIONS] (Follow strictly):\n${repoRecord.gloablInstruction}\n`
                 : "";
@@ -162,7 +160,6 @@ export async function POST(req: NextRequest) {
                 ? `\n[ADDITIONAL RUNTIME INSTRUCTIONS] (Follow strictly):\n${customPrompt}\n`
                 : "";
 
-            // Prompt Gemini for Playwright code string
             const prompt = `
 You are an expert QA automation engineer.
 Your task is to write a Playwright Node.js script body that executes a test case on an application running at URL: "${targetUrl}".
@@ -447,7 +444,7 @@ Only use fields actually found in:
                     await db.update(users).set({ credits: newCredits }).where(eq(users.id, user.id));
 
                     sendStream({
-                        type: "result",
+                        type: "result",    
                         success: true,
                         status: "passed",
                         logs,
