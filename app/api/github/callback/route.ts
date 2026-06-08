@@ -8,7 +8,7 @@ const ALLOWED_ORIGINS = [
     'https://auto-qa-rouge.vercel.app',
 ];
 
-function addCorsHeaders(response: NextResponse, origin?: string) {
+function addCorsHeaders(response: NextResponse, origin?: string | null) {
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
         response.headers.set('Access-Control-Allow-Origin', origin);
     }

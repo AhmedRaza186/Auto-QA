@@ -22,12 +22,12 @@ function addCorsHeaders(response: NextResponse, origin?: string) {
 }
 
 export async function OPTIONS(req: NextRequest) {
-    const origin = req.headers.get('origin');
+    const origin: string | undefined = req.headers.get('origin') ?? undefined;
     return addCorsHeaders(new NextResponse(null, { status: 200 }), origin);
 }
 
 export async function GET(req:NextRequest) {
-    const origin = req.headers.get('origin');
+    const origin: string | undefined = req.headers.get('origin') ?? undefined;
     const cookieStore = await cookies()
     const token = cookieStore.get('github_access_token')?.value
 
