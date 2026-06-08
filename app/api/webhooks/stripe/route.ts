@@ -45,8 +45,7 @@ export async function POST(req: Request) {
 
           if (currentUser) {
             const previousCredits = currentUser.credits || 0;
-            // The starter plan claims to add 1,000 credits, but backend sets 10,000.
-            // We'll update the database using the 10,000 value as configured, but print it out.
+   
             const creditsToAdd = 1000;
             const newCredits = previousCredits + creditsToAdd;
 
