@@ -85,7 +85,7 @@ const UserRepoList = ({ repoList, setReload }: Props) => {
   const handleGenerateTestCases = async (repo: UserRepo) => {
     try {
       setLoading(true)
-      const res = await axios.post('/api/generate-test-cases', {
+      await axios.post('/api/generate-test-cases', {
         userId: userDetail?.id,
         repoId: repo.repoId,
         owner: repo.owner,
@@ -118,15 +118,8 @@ const UserRepoList = ({ repoList, setReload }: Props) => {
   return (
     <div>
       <p
-        style={{
-          fontFamily: "'Geist Mono', monospace",
-          fontSize: 11,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          color: C.subtle,
-          marginBottom: '1.25rem',
-          fontWeight: 600,
-        }}
+        className="text-[11px] uppercase tracking-[0.12em] font-semibold mb-5"
+        style={{ fontFamily: "'Geist Mono', monospace", color: C.subtle }}
       >
         Repositories
       </p>
@@ -142,46 +135,26 @@ const UserRepoList = ({ repoList, setReload }: Props) => {
           <AccordionItem
             value={repo.repoId.toString()}
             key={repo.repoId}
-            style={{
-              background: C.surface,
-              border: `1px solid ${C.border}`,
-              borderRadius: 14,
-              marginBottom: 10,
-              padding: '0 1.25rem',
-              overflow: 'hidden',
-            }}
+            className="rounded-[14px] mb-3 px-4 sm:px-5 overflow-hidden"
+            style={{ background: C.surface, border: `1px solid ${C.border}` }}
           >
             {/* Trigger */}
-            <AccordionTrigger style={{ paddingTop: '1rem', paddingBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <AccordionTrigger className="py-4">
+              <div className="flex items-center gap-3">
                 <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 9,
-                    background: C.primaryBg,
-                    border: `1px solid ${C.primaryMid}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
+                  className="w-9 h-9 rounded-[9px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: C.primaryBg, border: `1px solid ${C.primaryMid}` }}
                 >
                   <GitBranch style={{ width: 16, height: 16, color: C.primary }} />
                 </div>
-                <div style={{ textAlign: 'left' }}>
+                <div className="text-left">
                   <h2
-                    style={{
-                      fontFamily: "'Geist', sans-serif",
-                      fontWeight: 600,
-                      fontSize: 14.5,
-                      color: C.ink,
-                      marginBottom: 2,
-                    }}
+                    className="font-semibold text-[14px] sm:text-[14.5px] mb-0.5"
+                    style={{ fontFamily: "'Geist', sans-serif", color: C.ink }}
                   >
                     {repo.full_name}
                   </h2>
-                  <p style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11.5, color: C.muted }}>
+                  <p className="text-[11px] sm:text-[11.5px]" style={{ fontFamily: "'Geist Mono', monospace", color: C.muted }}>
                     {repo.default_branch}
                     {repo.language && ` · ${repo.language}`}
                   </p>
@@ -191,49 +164,35 @@ const UserRepoList = ({ repoList, setReload }: Props) => {
 
             {/* Content */}
             <AccordionContent>
-              <div style={{ paddingTop: '1rem', paddingBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div className="pt-4 pb-5 flex flex-col gap-4">
 
                 {/* Target domain row */}
                 <div
-                  style={{
-                    background: C.surfaceAlt,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 10,
-                    padding: '0.75rem 1rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
+                  className="rounded-[10px] p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                  style={{ background: C.surfaceAlt, border: `1px solid ${C.border}` }}
                 >
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <Link2Icon style={{ width: 16, height: 16, color: C.primary }} />
-                    <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.muted }}>Target Domain:</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link2Icon style={{ width: 16, height: 16, color: C.primary, flexShrink: 0 }} />
+                    <span className="text-[13px]" style={{ fontFamily: "'Geist', sans-serif", color: C.muted }}>Target Domain:</span>
                     <span
+                      className="text-[12.5px] font-medium rounded-[6px] px-2.5 py-0.5"
                       style={{
                         fontFamily: "'Geist Mono', monospace",
-                        fontSize: 12.5,
                         color: C.primary,
                         background: C.primaryBg,
                         border: `1px solid ${C.primaryMid}`,
-                        borderRadius: 6,
-                        padding: '2px 10px',
-                        fontWeight: 500,
                       }}
                     >
                       {repo?.targetDomain || '—'}
                     </span>
                   </div>
-                  <RepoSettings repo={repo} setReload={setReload} />
+                  <div className="flex-shrink-0">
+                    <RepoSettings repo={repo} setReload={setReload} />
+                  </div>
                 </div>
 
-                {/* Status cards */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-                    gap: 12,
-                  }}
-                >
+                {/* Status cards grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <StatusCard
                     title="Total Tests"
                     value={statusData?.totalTests}
@@ -275,36 +234,26 @@ const UserRepoList = ({ repoList, setReload }: Props) => {
 
                 {/* Generate / Loading */}
                 {testCaseloading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: C.muted }}>
-                    <Loader2Icon style={{ width: 18, height: 18, animation: 'spin 1s linear infinite', color: C.primary }} />
-                    <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13 }}>Loading test cases…</span>
+                  <div className="flex items-center gap-2.5" style={{ color: C.muted }}>
+                    <Loader2Icon
+                      style={{ width: 18, height: 18, animation: 'spin 1s linear infinite', color: C.primary }}
+                    />
+                    <span className="text-[13px]" style={{ fontFamily: "'Geist', sans-serif" }}>Loading test cases…</span>
                   </div>
                 ) : (
                   <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column' as const,
-                      gap: 6,
-                      padding: '1rem 1.25rem',
-                      background: C.surfaceAlt,
-                      border: `1px solid ${C.border}`,
-                      borderRadius: 12,
-                    }}
+                    className="flex flex-col gap-1.5 p-4 sm:p-5 rounded-[12px]"
+                    style={{ background: C.surfaceAlt, border: `1px solid ${C.border}` }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
                       <div>
                         <h3
-                          style={{
-                            fontFamily: "'Geist', sans-serif",
-                            fontWeight: 600,
-                            fontSize: 14,
-                            color: C.ink,
-                            marginBottom: 4,
-                          }}
+                          className="font-semibold text-[14px] mb-1"
+                          style={{ fontFamily: "'Geist', sans-serif", color: C.ink }}
                         >
                           Generate AI Test Cases
                         </h3>
-                        <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
+                        <p className="text-[12.5px] leading-relaxed" style={{ fontFamily: "'Geist', sans-serif", color: C.muted }}>
                           Analyze this repository and auto-generate Playwright test scripts using AI.
                         </p>
                       </div>
@@ -312,36 +261,15 @@ const UserRepoList = ({ repoList, setReload }: Props) => {
                       <button
                         onClick={() => handleGenerateTestCases(repo)}
                         disabled={loading}
+                        className="flex items-center gap-2 font-semibold text-[13px] px-5 py-2 rounded-[9px] border-none transition-all duration-200 flex-shrink-0 disabled:cursor-not-allowed hover:enabled:-translate-y-px"
                         style={{
                           fontFamily: "'Geist', sans-serif",
-                          fontWeight: 600,
-                          fontSize: 13,
-                          padding: '9px 20px',
-                          borderRadius: 9,
-                          border: 'none',
                           cursor: loading ? 'not-allowed' : 'pointer',
                           background: loading
                             ? C.border
                             : `linear-gradient(135deg, ${C.primaryDark}, ${C.primary})`,
                           color: loading ? C.subtle : '#fff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 7,
                           boxShadow: loading ? 'none' : `0 4px 14px ${C.primary}38`,
-                          transition: 'all 0.2s ease',
-                          flexShrink: 0,
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!loading) {
-                            ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
-                            ;(e.currentTarget as HTMLButtonElement).style.boxShadow = `0 8px 24px ${C.primary}55`
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!loading) {
-                            ;(e.currentTarget as HTMLButtonElement).style.transform = 'none'
-                            ;(e.currentTarget as HTMLButtonElement).style.boxShadow = `0 4px 14px ${C.primary}38`
-                          }
                         }}
                       >
                         {loading ? (
@@ -386,54 +314,26 @@ function StatusCard({
 }) {
   return (
     <div
-      style={{
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        padding: '1rem 1.125rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        transition: 'border-color 0.25s',
-      }}
+      className="rounded-[12px] p-3 sm:p-4 flex items-center justify-between transition-[border-color] duration-200"
+      style={{ background: C.surface, border: `1px solid ${C.border}` }}
     >
       <div>
         <p
-          style={{
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 11.5,
-            color: C.muted,
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            fontWeight: 500,
-            marginBottom: 4,
-          }}
+          className="text-[11px] sm:text-[11.5px] uppercase tracking-[0.06em] font-medium mb-1"
+          style={{ fontFamily: "'Geist', sans-serif", color: C.muted }}
         >
           {title}
         </p>
         <h3
-          style={{
-            fontFamily: "'Geist Mono', monospace",
-            fontSize: '1.5rem',
-            fontWeight: 700,
-            color: accent,
-            lineHeight: 1,
-          }}
+          className="text-xl sm:text-2xl font-bold leading-none"
+          style={{ fontFamily: "'Geist Mono', monospace", color: accent }}
         >
           {value}
         </h3>
       </div>
       <div
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: '50%',
-          background: accentBg,
-          border: `1px solid ${accent}40`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        className="w-9 h-9 sm:w-[38px] sm:h-[38px] rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: accentBg, border: `1px solid ${accent}40` }}
       >
         {icon}
       </div>

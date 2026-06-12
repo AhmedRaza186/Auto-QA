@@ -1,6 +1,5 @@
 'use client'
 import { UserContext } from '@/context/userContext'
-import Image from 'next/image'
 import React, { useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
@@ -70,70 +69,46 @@ const WorkspaceMain = () => {
 
   return (
     <div>
+      {/* Payment banner */}
       {(searchParams.get('success') === 'true' || searchParams.get('canceled') === 'true') && (
         <div
-          style={{
-            marginBottom: '1.25rem',
-            background: searchParams.get('success') === 'true' ? '#022c22' : '#1c1a08',
-            border: `1px solid ${searchParams.get('success') === 'true' ? '#10B98140' : '#F59E0B40'}`,
-            borderRadius: 12,
-            padding: '10px 14px',
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 13,
-            color: searchParams.get('success') === 'true' ? '#34d399' : '#fbbf24',
-          }}
+          className={`mb-5 rounded-xl px-4 py-3 text-[13px] border ${
+            searchParams.get('success') === 'true'
+              ? 'bg-[#022c22] border-[#10B98140] text-[#34d399]'
+              : 'bg-[#1c1a08] border-[#F59E0B40] text-[#fbbf24]'
+          }`}
+          style={{ fontFamily: "'Geist', sans-serif" }}
         >
           {searchParams.get('success') === 'true'
             ? 'Payment successful. Credits will be updated shortly.'
             : 'Payment canceled. No changes were made.'}
         </div>
       )}
+
       {/* Page Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem',
-          paddingBottom: '1.5rem',
-          borderBottom: `1px solid ${C.border}`,
-        }}
-      >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 pb-6 border-b border-[#334155]">
         <div>
           <h1
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: '1.875rem',
-              fontWeight: 700,
-              color: C.ink,
-              letterSpacing: '-0.02em',
-              marginBottom: 4,
-            }}
+            className="text-2xl sm:text-3xl font-bold tracking-tight mb-1"
+            style={{ fontFamily: "'Space Grotesk', sans-serif", color: C.ink, letterSpacing: '-0.02em' }}
           >
             Workspace
           </h1>
-          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.muted }}>
+          <p className="text-[13px]" style={{ fontFamily: "'Geist', sans-serif", color: C.muted }}>
             Manage repositories and generate AI-powered Playwright test suites
           </p>
         </div>
 
         {/* Credits badge */}
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: C.primaryBg,
-            border: `1px solid ${C.primaryMid}`,
-            borderRadius: 10,
-            padding: '8px 16px',
-          }}
+          className="flex items-center gap-2 rounded-[10px] px-4 py-2 self-start sm:self-auto flex-shrink-0"
+          style={{ background: C.primaryBg, border: `1px solid ${C.primaryMid}` }}
         >
           <Zap style={{ width: 15, height: 15, color: C.primary }} />
-          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.inkMid, fontWeight: 500 }}>
+          <span className="text-[13px] font-medium" style={{ fontFamily: "'Geist', sans-serif", color: C.inkMid }}>
             Credits:&nbsp;
           </span>
-          <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 14, color: C.primary, fontWeight: 700 }}>
+          <span className="text-sm font-bold" style={{ fontFamily: "'Geist Mono', monospace", color: C.primary }}>
             {userDetail?.credits ?? '—'}
           </span>
         </div>
@@ -141,75 +116,38 @@ const WorkspaceMain = () => {
 
       {/* GitHub Connect Card */}
       <div
-        style={{
-          background: C.surface,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          padding: '1.25rem 1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '2rem',
-          transition: 'border-color 0.25s',
-        }}
+        className="rounded-[14px] p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 transition-[border-color] duration-200"
+        style={{ background: C.surface, border: `1px solid ${C.border}` }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="flex items-center gap-3 sm:gap-4">
           <div
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 10,
-              background: C.primaryBg,
-              border: `1px solid ${C.primaryMid}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-[10px] flex items-center justify-center flex-shrink-0"
+            style={{ background: C.primaryBg, border: `1px solid ${C.primaryMid}` }}
           >
             <GitBranch style={{ width: 20, height: 20, color: C.primary }} />
           </div>
           <div>
             <h2
-              style={{
-                fontFamily: "'Geist', sans-serif",
-                fontWeight: 600,
-                fontSize: 15,
-                color: C.ink,
-                marginBottom: 2,
-              }}
+              className="font-semibold text-sm sm:text-[15px] mb-0.5"
+              style={{ fontFamily: "'Geist', sans-serif", color: C.ink }}
             >
               Connect GitHub &amp; Add Repository
             </h2>
-            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12.5, color: C.muted }}>
+            <p className="text-xs sm:text-[12.5px]" style={{ fontFamily: "'Geist', sans-serif", color: C.muted }}>
               Link your GitHub account to start generating Playwright test cases
             </p>
           </div>
         </div>
 
-        <div>
+        <div className="flex-shrink-0">
           {!token ? (
             <button
               onClick={addRepo}
+              className="font-semibold text-[13px] px-5 py-2 rounded-[9px] border-none cursor-pointer text-white transition-all duration-200 hover:-translate-y-px"
               style={{
                 fontFamily: "'Geist', sans-serif",
-                fontWeight: 600,
-                fontSize: 13,
-                padding: '9px 20px',
-                borderRadius: 9,
-                border: 'none',
-                cursor: 'pointer',
                 background: `linear-gradient(135deg, ${C.primaryDark}, ${C.primary})`,
-                color: '#fff',
                 boxShadow: `0 4px 14px ${C.primary}38`,
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = `0 8px 24px ${C.primary}55`
-                ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = `0 4px 14px ${C.primary}38`
-                ;(e.currentTarget as HTMLButtonElement).style.transform = 'none'
               }}
             >
               ⬡ Setup GitHub

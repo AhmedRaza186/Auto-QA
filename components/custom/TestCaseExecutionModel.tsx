@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TestCase } from "./UserRepoList";
+import MarkdownRenderer from "./MarkdownRenderer";
 import {
   Play,
   CheckCircle2,
@@ -208,11 +209,16 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
   const [executionMode, setExecutionMode] = useState<"cache" | "generate">("cache");
   const [customPrompt, setCustomPrompt] = useState("");
   const [showOptions, setShowOptions] = useState(false);
+  // Kept in sync SYNCHRONOUSLY (not via useEffect) so the init-guard
+  // in the open-effect is always accurate on the same render frame.
   const isExecutingRef = useRef(false);
+  const resultsRef = useRef<Record<number, RunResult>>({});
+  const hasInitializedRef = useRef(false);
+  const prevTestCasesRef = useRef<TestCase[]>([]);
 
   useEffect(() => {
-    isExecutingRef.current = isExecuting;
-  }, [isExecuting]);
+    resultsRef.current = results;
+  }, [results]);
 
   const analyzeLogs = async (testCaseId: number) => {
     const current = results[testCaseId];
@@ -256,8 +262,67 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
   };
 
   useEffect(() => {
+    if (!isOpen) {
+      hasInitializedRef.current = false;
+      prevTestCasesRef.current = testCases;
+      return;
+    }
+
+    const prevResults = resultsRef.current;
+    const prevResultsCount = Object.keys(prevResults).length;
+    const testCasesChanged = prevTestCasesRef.current !== testCases;
+
+    // Calculate logs count before possible overwrite
+    let logsCountBeforeOverwrite = 0;
+    let hasStreamed = false;
+
+    Object.values(prevResults).forEach((res) => {
+      if (res.logs && res.logs.length > 0) {
+        logsCountBeforeOverwrite += res.logs.length;
+        const firstLog = res.logs[0] || "";
+        const isPlaceholder = res.logs.length === 1 && 
+          (firstLog.includes("Waiting to run...") || firstLog.includes("Queued..."));
+        if (!isPlaceholder) {
+          hasStreamed = true;
+        }
+      }
+      if (res.status && res.status !== "idle") {
+        hasStreamed = true;
+      }
+    });
+
+    console.log("[TestExecutionModal] Initialization effect triggered:", {
+      isOpen,
+      testCasesChanged,
+      prevResultsCount,
+      logsCountBeforeOverwrite,
+      hasStreamed,
+      hasInitialized: hasInitializedRef.current,
+      isExecuting: isExecutingRef.current,
+    });
+
     // Only initialize when the modal opens — never wipe in-flight terminal output mid-run
-    if (!isOpen || testCases.length === 0 || isExecutingRef.current) return;
+    if (testCases.length === 0 || isExecutingRef.current) {
+      prevTestCasesRef.current = testCases;
+      return;
+    }
+
+    const isFirstOpen = !hasInitializedRef.current;
+    const hasNoExistingResults = prevResultsCount === 0;
+
+    const shouldInitialize = isFirstOpen || (hasNoExistingResults && !hasStreamed);
+
+    if (!shouldInitialize) {
+      console.log("[TestExecutionModal] Skipped re-initialization of results to preserve completed/streamed data.");
+      prevTestCasesRef.current = testCases;
+      return;
+    }
+
+    console.log("[TestExecutionModal] Initializing results state...", {
+      isFirstOpen,
+      hasNoExistingResults,
+      hasStreamed,
+    });
 
     const initial: Record<number, RunResult> = {};
     testCases.forEach((tc) => {
@@ -281,6 +346,9 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
     setBaseUrl(repository?.targetDomain || repository?.websiteUrl || "http://localhost:3000");
     const hasMissingScript = testCases.some((tc) => !tc.playwrightScript);
     setExecutionMode(hasMissingScript ? "generate" : "cache");
+
+    hasInitializedRef.current = true;
+    prevTestCasesRef.current = testCases;
   }, [isOpen, testCases, repository]);
 
   useEffect(() => {
@@ -289,6 +357,11 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
       return;
     }
     const runTest = async () => {
+      // Mark as executing SYNCHRONOUSLY before any awaits so the
+      // init-useEffect guard (isExecutingRef.current) is reliable
+      // even if React hasn't committed the isExecuting state yet.
+      isExecutingRef.current = true;
+
       const currentTestCase = testCases[currentIdx];
       const tcId = currentTestCase.id;
       setSelectedDetailId(tcId);
@@ -427,17 +500,10 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
             if (buffer.trim()) {
               processStreamLine(buffer);
             }
-
-            // Final safety sync — keep terminal output after the run completes
-            if (accumulatedLogs.length > 0) {
-              setResults((prev) => ({
-                ...prev,
-                [tcId]: {
-                  ...(prev[tcId] || { testCaseId: tcId, status: "running" as const }),
-                  logs: pickBestLogs(accumulatedLogs, prev[tcId]?.logs ?? []),
-                },
-              }));
-            }
+            // NOTE: No extra setResults here — the "result" event handler inside
+            // applyStreamEvent already committed the final status + logs atomically.
+            // A second partial update here would race against that and could drop
+            // the status field, causing the console to blank out.
           }
 
           success = true;
@@ -473,8 +539,15 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
         return msg.includes("status 40");
       }
       const nextIdx = currentIdx + 1;
+      // Clear the synchronous ref BEFORE calling setIsExecuting so that
+      // if React batches the state update with a testCases prop change,
+      // the init-useEffect guard already sees isExecutingRef.current === false
+      // only after we are truly done — never mid-stream.
+      if (nextIdx >= testCases.length) {
+        isExecutingRef.current = false;
+        setIsExecuting(false);
+      }
       setCurrentIdx(nextIdx);
-      if (nextIdx >= testCases.length) setIsExecuting(false);
     };
     runTest();
   }, [isExecuting, currentIdx, testCases, baseUrl, executionMode]);
@@ -485,12 +558,17 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
       resetResults[tc.id] = { testCaseId: tc.id, status: "idle", logs: ["Queued..."], playwrightScript: tc.playwrightScript || undefined };
     });
     setResults(resetResults);
+    isExecutingRef.current = true; // set synchronously before first runTest fires
     setIsExecuting(true);
     setCurrentIdx(0);
     setSelectedDetailId(testCases[0].id);
   };
 
-  const stopExecution = () => { setIsExecuting(false); setCurrentIdx(-1); };
+  const stopExecution = () => {
+    isExecutingRef.current = false; // clear ref synchronously so init-guard resets correctly
+    setIsExecuting(false);
+    setCurrentIdx(-1);
+  };
 
   const currentSelectedResult = selectedDetailId ? results[selectedDetailId] : null;
   let currentSelectedTestCase = testCases.find((tc) => tc.id === selectedDetailId) ?? 0 as any;
@@ -993,17 +1071,7 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
                           AI Analysis &amp; Explanation
                         </h4>
                       </div>
-                      <div
-                        style={{
-                          fontFamily: "'Geist', sans-serif",
-                          fontSize: 13,
-                          color: C.inkMid,
-                          whiteSpace: "pre-wrap",
-                          lineHeight: 1.7,
-                        }}
-                      >
-                        {currentSelectedResult.humanReadable}
-                      </div>
+                      <MarkdownRenderer content={currentSelectedResult.humanReadable} />
                     </div>
                   )}
                 </div>
