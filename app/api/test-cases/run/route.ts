@@ -3,7 +3,6 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "@/db";
 import { TestCasesTable, repositories, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { chromium } from "playwright";
 
 const ai = new GoogleGenAI({
@@ -108,8 +107,7 @@ export async function POST(req: NextRequest) {
 
         // 2. Generate script using Gemini if forced, or if no script is cached
         if (forceRegenerate) {
-            const cookiesStore = await cookies();
-            const githubToken = cookiesStore.get("github_access_token")?.value;
+            const githubToken = user.githubToken;
 
             if (!githubToken) {
                 return NextResponse.json(

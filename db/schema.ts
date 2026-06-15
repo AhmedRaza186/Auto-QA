@@ -5,6 +5,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name"),
   email: text("email").notNull().unique(),
+  githubToken: text("github_token"),
   credits: integer('credits').default(10000).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -49,9 +50,22 @@ export const TestCasesTable = pgTable("test_cases", {
   status: varchar("status", { length: 100 }).default("generated"),
 
   createdAt: timestamp("created_at").defaultNow(),
-    logs: jsonb("logs").$type<string[]>().default([]),
+  logs: jsonb("logs").$type<string[]>().default([]),
   sessionId: varchar("session_id", { length: 255 }),
   sessionUrl: varchar("session_url", { length: 500 }),
+
+  // Issue Resolution & Pull Request fields
+  fixStatus: varchar("fix_status", { length: 100 }).default("idle"),
+  fixProposedChanges: jsonb("fix_proposed_changes").$type<{
+    filePath: string;
+    originalContent: string;
+    newContent: string;
+    diff?: string;
+  }[]>().default([]),
+  fixAnalysis: text("fix_analysis"),
+  fixBranchName: varchar("fix_branch_name", { length: 255 }),
+  fixPullRequestUrl: varchar("fix_pull_request_url", { length: 500 }),
+  fixError: text("fix_error"),
 });
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

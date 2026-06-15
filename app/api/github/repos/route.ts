@@ -1,13 +1,23 @@
 import axios from "axios"
-import { cookies } from "next/headers"
+import { currentUser } from "@clerk/nextjs/server"
+import { db, users } from "@/db"
+import { eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(){
     try {
-        const cookieStore = await cookies()
-        const token = cookieStore.get('github_access_token')?.value
+        const clerkUser = await currentUser();
+        const email = clerkUser?.primaryEmailAddress?.emailAddress;
+
+        if (!email) {
+            return NextResponse.json({error:'Github token not found'}, {status:400})
+        }
+
+        const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+        const token = user?.githubToken
+
         if(!token){
             return NextResponse.json({error:'Github token not found'}, {status:400})
         }
@@ -41,7 +51,14 @@ export async function GET(){
         const response = NextResponse.json({error: "Failed to fetch repositories"}, { status });
         
         if (status === 401) {
-            response.cookies.delete('github_access_token');
+            const clerkUser = await currentUser();
+            const email = clerkUser?.primaryEmailAddress?.emailAddress;
+            if (email) {
+                const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+                if (user) {
+                    await db.update(users).set({ githubToken: null }).where(eq(users.id, user.id));
+                }
+            }
         }
         
         return response;

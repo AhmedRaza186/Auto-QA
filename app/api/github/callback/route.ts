@@ -1,4 +1,7 @@
 import axios from "axios";
+import { currentUser } from "@clerk/nextjs/server";
+import { db, users } from "@/db";
+import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const ALLOWED_ORIGINS = [
@@ -52,15 +55,26 @@ export async function GET(req: NextRequest) {
         return addCorsHeaders(NextResponse.redirect(new URL('/workspace?error=token not found', req.url)), origin)
     }
 
-    const redirect = NextResponse.redirect(new URL('/workspace', req.url))
+    const clerkUser = await currentUser();
+    const email = clerkUser?.primaryEmailAddress?.emailAddress;
 
-    redirect.cookies.set('github_access_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 30,
-        path: '/',
-        sameSite: 'lax'
-    })
+    if (!email) {
+        return addCorsHeaders(NextResponse.redirect(new URL('/workspace?error=unauthorized', req.url)), origin)
+    }
+
+    const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+    if (existingUser) {
+        await db.update(users).set({ githubToken: token }).where(eq(users.id, existingUser.id));
+    } else {
+        await db.insert(users).values({
+            name: clerkUser?.fullName ?? "New User",
+            email,
+            githubToken: token,
+        });
+    }
+
+    const redirect = NextResponse.redirect(new URL('/workspace?github=connected', req.url))
 
     return addCorsHeaders(redirect, origin)
 }

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 
 import { db } from "@/db";
-import { cookies } from "next/headers";
 import { TestCasesTable, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -146,8 +145,6 @@ async function readGithubFile({
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const cookiesStore = await cookies();
-        const githubToken = cookiesStore.get('github_access_token')?.value;
 
         const {
             userId,
@@ -157,10 +154,10 @@ export async function POST(req: NextRequest) {
             branch = "main",
         } = body;
 
-        if (!userId || !owner || !repo || !githubToken) {
+        if (!userId || !owner || !repo) {
             return NextResponse.json(
                 {
-                    error: "userId, owner, repo and githubToken are required",
+                    error: "userId, owner and repo are required",
                 },
                 { status: 400 }
             );
@@ -170,6 +167,14 @@ export async function POST(req: NextRequest) {
         const [user] = await db.select().from(users).where(eq(users.id, Number(userId)));
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+        const githubToken = user.githubToken;
+
+        if (!githubToken) {
+            return NextResponse.json(
+                { error: "GitHub authentication token is missing or expired" },
+                { status: 401 }
+            );
         }
         if (user.credits < 200) {
             return NextResponse.json(

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { TestCase } from './UserRepoList'
 import { Checkbox } from '../ui/checkbox'
 import { Play, RefreshCw } from 'lucide-react'
@@ -56,6 +56,12 @@ function TypePill({ type }: { type: string }) {
 function TestCasesList({ testCases, onReload, repository }: Props) {
   const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>([])
   const [isModelOpen, setIsModelOpen] = useState(false)
+
+  useEffect(() => {
+    const handleClose = () => setIsModelOpen(false)
+    window.addEventListener('test-execution-modal:close', handleClose)
+    return () => window.removeEventListener('test-execution-modal:close', handleClose)
+  }, [])
 
   const handleSelectedTestCase = (checked: boolean | string, testCase: TestCase) => {
     if (checked) setSelectedTestCases((prev) => [...prev, testCase])
@@ -225,7 +231,6 @@ function TestCasesList({ testCases, onReload, repository }: Props) {
       <TestExecutionModal
         testCases={selectedTestCases}
         isOpen={isModelOpen}
-        onClose={() => setIsModelOpen(false)}
         repository={repository}
       />
     </div>

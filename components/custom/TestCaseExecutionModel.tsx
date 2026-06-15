@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TestCase } from "./UserRepoList";
-import MarkdownRenderer from "./MarkdownRenderer";
 import {
   Play,
   CheckCircle2,
@@ -29,15 +28,19 @@ import {
   ChevronUp,
   Square,
   X,
+  GitPullRequest,
+  Wrench,
 } from "lucide-react";
 import axios from "axios";
 import { UserContext } from "@/context/userContext";
 import { C } from "@/app/lib/theme";
+import MarkdownRenderer from "./MarkdownRenderer";
+import DiffViewer from "./DiffViewer";
+
 
 type Props = {
   testCases: TestCase[];
   isOpen: boolean;
-  onClose: () => void;
   // onRunComplete?: () => void;
   repository: any;
 };
@@ -53,6 +56,14 @@ type RunResult = {
   sessionId?: string;
   sessionUrl?: string;
   playwrightScript?: string;
+
+  // New Issue Resolution fields
+  fixStatus?: "idle" | "generating" | "generated" | "committing" | "pr_created" | "failed";
+  fixProposedChanges?: { filePath: string; originalContent: string; newContent: string }[];
+  fixAnalysis?: string;
+  fixBranchName?: string;
+  fixPullRequestUrl?: string;
+  fixError?: string;
 };
 
 // ─── Status badge component ───────────────────────────────────────
@@ -198,7 +209,7 @@ function applyStreamEvent(
   return accumulatedLogs;
 }
 
-export default function TestExecutionModal({ testCases, isOpen, onClose, repository }: Props) {
+export default function TestExecutionModal({ testCases, isOpen, repository }: Props) {
   const [baseUrl, setBaseUrl] = useState(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}`);
   const [backendUrl, setBackendUrl] = useState("");
   const [currentIdx, setCurrentIdx] = useState<number>(-1);
@@ -215,6 +226,10 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
   const resultsRef = useRef<Record<number, RunResult>>({});
   const hasInitializedRef = useRef(false);
   const prevTestCasesRef = useRef<TestCase[]>([]);
+
+  const requestClose = () => {
+    window.dispatchEvent(new Event("test-execution-modal:close"));
+  };
 
   useEffect(() => {
     resultsRef.current = results;
@@ -261,6 +276,101 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
     }
   };
 
+  const generateFix = async (testCaseId: number) => {
+    setResults((prev) => ({
+      ...prev,
+      [testCaseId]: {
+        ...prev[testCaseId],
+        fixStatus: "generating",
+        fixError: undefined,
+      },
+    }));
+
+    try {
+      const res = await axios.post("/api/test-cases/resolve/generate", {
+        testCaseId,
+      });
+
+      if (res.data.credits !== undefined) {
+        setUserDetail((prev: any) => ({ ...prev, credits: res.data.credits }));
+      }
+
+      setResults((prev) => ({
+        ...prev,
+        [testCaseId]: {
+          ...prev[testCaseId],
+          fixStatus: res.data.fixStatus,
+          fixProposedChanges: res.data.proposedChanges,
+          fixAnalysis: res.data.fixAnalysis,
+          fixError: undefined,
+        },
+      }));
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || "Failed to generate fix";
+      setResults((prev) => ({
+        ...prev,
+        [testCaseId]: {
+          ...prev[testCaseId],
+          fixStatus: "failed",
+          fixError: errorMsg,
+        },
+      }));
+    }
+  };
+
+  const approveFix = async (testCaseId: number) => {
+    setResults((prev) => ({
+      ...prev,
+      [testCaseId]: {
+        ...prev[testCaseId],
+        fixStatus: "committing",
+        fixError: undefined,
+      },
+    }));
+
+    try {
+      const res = await axios.post("/api/test-cases/resolve/approve", {
+        testCaseId,
+      });
+
+      setResults((prev) => ({
+        ...prev,
+        [testCaseId]: {
+          ...prev[testCaseId],
+          fixStatus: res.data.fixStatus,
+          fixBranchName: res.data.branchName,
+          fixPullRequestUrl: res.data.pullRequestUrl,
+          fixError: undefined,
+        },
+      }));
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || "Failed to commit and create PR";
+      setResults((prev) => ({
+        ...prev,
+        [testCaseId]: {
+          ...prev[testCaseId],
+          fixStatus: "failed",
+          fixError: errorMsg,
+        },
+      }));
+    }
+  };
+
+  const discardFix = async (testCaseId: number) => {
+    setResults((prev) => ({
+      ...prev,
+      [testCaseId]: {
+        ...prev[testCaseId],
+        fixStatus: "idle",
+        fixProposedChanges: [],
+        fixAnalysis: undefined,
+        fixBranchName: undefined,
+        fixPullRequestUrl: undefined,
+        fixError: undefined,
+      },
+    }));
+  };
+
   useEffect(() => {
     if (!isOpen) {
       hasInitializedRef.current = false;
@@ -276,7 +386,7 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
     let logsCountBeforeOverwrite = 0;
     let hasStreamed = false;
 
-    Object.values(prevResults).forEach((res) => {
+    Object.values(prevResults).forEach((res: RunResult) => {
       if (res.logs && res.logs.length > 0) {
         logsCountBeforeOverwrite += res.logs.length;
         const firstLog = res.logs[0] || "";
@@ -336,6 +446,12 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
         playwrightScript: tc.playwrightScript || undefined,
         sessionId: (tc as any).sessionId || (tc as any).session_id || undefined,
         sessionUrl: (tc as any).sessionUrl || (tc as any).session_url || undefined,
+        fixStatus: (tc as any).fixStatus || (tc as any).fix_status || "idle",
+        fixProposedChanges: (tc as any).fixProposedChanges || (tc as any).fix_proposed_changes || [],
+        fixAnalysis: (tc as any).fixAnalysis || (tc as any).fix_analysis || undefined,
+        fixBranchName: (tc as any).fixBranchName || (tc as any).fix_branch_name || undefined,
+        fixPullRequestUrl: (tc as any).fixPullRequestUrl || (tc as any).fix_pull_request_url || undefined,
+        fixError: (tc as any).fixError || (tc as any).fix_error || undefined,
       };
     });
     setResults(initial);
@@ -596,7 +712,7 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
         if (!open) {
           setIsExecuting(false);
           setCurrentIdx(-1);
-          onClose();
+          requestClose();
         }
       }}
     >
@@ -1074,6 +1190,159 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
                       <MarkdownRenderer content={currentSelectedResult.humanReadable} />
                     </div>
                   )}
+
+                  {/* ── AI Issue Resolution Section ── */}
+                  {currentSelectedResult?.status === "failed" && (
+                    <div
+                      style={{
+                        background: `linear-gradient(180deg, ${C.surface} 0%, rgba(29, 78, 216, 0.05) 100%)`,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 12,
+                        padding: "1.25rem",
+                        marginTop: 16,
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+                        transition: "all 0.3s ease",
+                      }}
+                    >
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 12,
+                        borderBottom: `1px solid ${C.border}`,
+                        paddingBottom: 8,
+                      }}>
+                        <Wrench style={{ width: 15, height: 15, color: C.primary }} />
+                        <h4 style={{
+                          fontFamily: "'Space Grotesk', sans-serif",
+                          fontWeight: 700,
+                          fontSize: 13.5,
+                          color: C.ink,
+                          margin: 0,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}>
+                          AI Issue Resolution
+                        </h4>
+                      </div>
+
+                      {/* State: IDLE */}
+                      {(!currentSelectedResult.fixStatus || currentSelectedResult.fixStatus === "idle") && (
+                        <div style={{ textAlign: "center", padding: "10px 0" }}>
+                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12.5, color: C.muted, marginBottom: 12 }}>
+                            Analyze logs and repository code to automatically generate a fix and open a Pull Request.
+                          </p>
+                          <button
+                            onClick={() => generateFix(currentSelectedTestCase.id)}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              fontFamily: "'Geist', sans-serif",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              padding: "10px 24px",
+                              borderRadius: 8,
+                              border: "none",
+                              background: `linear-gradient(135deg, ${C.primaryDark}, ${C.primary})`,
+                              color: "#fff",
+                              cursor: "pointer",
+                              boxShadow: `0 4px 14px ${C.primary}38`,
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = "none"}
+                          >
+                            <Sparkles style={{ width: 14, height: 14 }} />
+                            Resolve with AI Code Fix
+                          </button>
+                        </div>
+                      )}
+
+                      {/* State: GENERATING */}
+                      {currentSelectedResult.fixStatus === "generating" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, color: C.inkMid }}>
+                          <Loader2 style={{ width: 16, height: 16, color: C.primary, animation: "spin 1s linear infinite" }} />
+                          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13 }}>AI is analyzing logs and repository source files...</span>
+                        </div>
+                      )}
+
+                      {/* State: GENERATED (Proposed Fix) */}
+                      {currentSelectedResult.fixStatus === "generated" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                          {currentSelectedResult.fixAnalysis && (
+                            <div style={{ background: C.surfaceAlt, padding: 12, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                              <h5 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, color: C.ink, marginBottom: 4 }}>
+                                Root Cause &amp; Resolution Analysis:
+                              </h5>
+                              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12.5, color: C.muted, margin: 0, lineHeight: 1.6 }}>
+                                {currentSelectedResult.fixAnalysis}
+                              </p>
+                            </div>
+                          )}
+
+                          <div>
+                            <h5 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, color: C.ink, marginBottom: 6 }}>
+                              Proposed Changes:
+                            </h5>
+                            {(currentSelectedResult.fixProposedChanges || []).map((change, idx) => (
+                              <DiffViewer
+                                key={idx}
+                                filePath={change.filePath}
+                                originalContent={change.originalContent}
+                                newContent={change.newContent}
+                              />
+                            ))}
+                          </div>
+
+                          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                            <button
+                              onClick={() => approveFix(currentSelectedTestCase.id)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                fontFamily: "'Geist', sans-serif",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                padding: "9px 18px",
+                                borderRadius: 8,
+                                border: "none",
+                                background: `linear-gradient(135deg, ${C.primaryDark}, ${C.primary})`,
+                                color: "#fff",
+                                cursor: "pointer",
+                                boxShadow: `0 4px 14px ${C.primary}38`,
+                                transition: "all 0.2s",
+                              }}
+                            >
+                              <GitPullRequest style={{ width: 14, height: 14 }} />
+                              Approve &amp; Create Pull Request
+                            </button>
+                            <button
+                              onClick={() => discardFix(currentSelectedTestCase.id)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                fontFamily: "'Geist', sans-serif",
+                                fontSize: 13,
+                                fontWeight: 500,
+                                padding: "9px 18px",
+                                borderRadius: 8,
+                                border: `1px solid ${C.border}`,
+                                background: "transparent",
+                                color: C.muted,
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                              }}
+                            >
+                              Discard
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -1106,10 +1375,7 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
           display: "flex", justifyContent: "flex-end", flexShrink: 0,
         }}>
           <button
-            onClick={() =>{
-             currentSelectedTestCase = null;
-              onClose()
-            }}
+            onClick={requestClose}
             disabled={isExecuting}
             style={{
               display: "flex", alignItems: "center", gap: 7,
@@ -1121,13 +1387,13 @@ export default function TestExecutionModal({ testCases, isOpen, onClose, reposit
             }}
             onMouseEnter={(e) => {
               if (!isExecuting) {
-                ; (e.currentTarget as HTMLButtonElement).style.borderColor = C.borderMid
-                  ; (e.currentTarget as HTMLButtonElement).style.color = C.ink
+                (e.currentTarget as HTMLButtonElement).style.borderColor = C.borderMid;
+                (e.currentTarget as HTMLButtonElement).style.color = C.ink;
               }
             }}
             onMouseLeave={(e) => {
-              ; (e.currentTarget as HTMLButtonElement).style.borderColor = C.border
-                ; (e.currentTarget as HTMLButtonElement).style.color = C.inkMid
+              (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
+              (e.currentTarget as HTMLButtonElement).style.color = C.inkMid;
             }}
           >
             <X style={{ width: 14, height: 14 }} />

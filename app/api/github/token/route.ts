@@ -1,6 +1,8 @@
-import { cookies } from "next/headers";
+import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
+import { db, users } from "@/db";
+import { eq } from "drizzle-orm";
 
 export const dynamic = 'force-dynamic';
 
@@ -28,8 +30,15 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function GET(req:NextRequest) {
     const origin: string | undefined = req.headers.get('origin') ?? undefined;
-    const cookieStore = await cookies()
-    const token = cookieStore.get('github_access_token')?.value
+    const clerkUser = await currentUser();
+    const email = clerkUser?.primaryEmailAddress?.emailAddress;
+
+    if (!email) {
+        return addCorsHeaders(NextResponse.json({token: null}), origin)
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+    const token = user?.githubToken
 
     if (!token) {
         return addCorsHeaders(NextResponse.json({token: null}), origin)
@@ -45,10 +54,14 @@ export async function GET(req:NextRequest) {
         return addCorsHeaders(NextResponse.json({token: token}), origin)
     } catch (error: any) {
         if (error.response?.status === 401) {
-            const response = NextResponse.json({token: null});
-            response.cookies.delete('github_access_token');
-            return addCorsHeaders(response, origin);
+            if (email) {
+                const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+                if (user) {
+                    await db.update(users).set({ githubToken: null }).where(eq(users.id, user.id));
+                }
+            }
+            return addCorsHeaders(NextResponse.json({token: null}), origin);
         }
-        return addCorsHeaders(NextResponse.json({token: token}), origin)
+        return addCorsHeaders(NextResponse.json({token: null}), origin)
     }
 }
