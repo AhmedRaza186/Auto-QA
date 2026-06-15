@@ -9,7 +9,7 @@ const GITHUB_API_BASE = "https://api.github.com";
 
 function getHeaders(token: string) {
   return {
-    Authorization: `token ${token}`,
+    Authorization: `Bearer ${token}`,
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
   };
